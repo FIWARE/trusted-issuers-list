@@ -4,7 +4,6 @@ import io.micronaut.core.annotation.Nullable;
 import io.micronaut.data.model.Sort;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.annotation.Controller;
-import io.micronaut.http.annotation.QueryValue;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.fiware.iam.TIRMapper;
@@ -23,6 +22,10 @@ import java.util.Optional;
 
 import static org.fiware.iam.rest.TrustedIssuersListController.HREF_TEMPLATE;
 
+/**
+ * Implementation of the (EBSI-compatible) trusted issuers registry
+ * {@see https://api-pilot.ebsi.eu/docs/apis/trusted-issuers-registry/v4#/}
+ */
 @Slf4j
 @Controller("${general.basepath:/}")
 @RequiredArgsConstructor
@@ -44,6 +47,7 @@ public class TrustedIssuerRegistryController implements TirApi {
 		return HttpResponse.ok(trustedIssuerMapper.map(optionalTrustedIssuer.get()));
 	}
 
+	// checks the basic structure of a did, will not validate them!
 	private void checkDidFormat(String did) {
 		String[] didParts = did.split(":");
 		if (didParts.length < 3 || !didParts[0].equals("did")) {
@@ -51,6 +55,9 @@ public class TrustedIssuerRegistryController implements TirApi {
 		}
 	}
 
+	/**
+	 * Implements anchor-based pagination on top of the offset-mechanism from the repository.
+	 */
 	@Override
 	public HttpResponse<IssuersResponseVO> getIssuersV4(@Nullable Integer pageSize, @Nullable String lastIssuer) {
 		Optional<String> optionalLastIssuer = Optional.ofNullable(lastIssuer);

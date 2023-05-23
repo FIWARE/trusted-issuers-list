@@ -13,6 +13,9 @@ import lombok.experimental.Accessors;
 
 import java.util.Collection;
 
+/**
+ * Data entity to represent a trusted issuer
+ */
 @Introspected
 @Accessors(chain = true)
 @Data

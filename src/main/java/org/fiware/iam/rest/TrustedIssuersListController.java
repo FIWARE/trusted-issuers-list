@@ -16,6 +16,9 @@ import javax.transaction.Transactional;
 import java.net.URI;
 import java.util.Optional;
 
+/**
+ * Implementation  of the (proprietary) trusted-list api to manage the issuers.
+ */
 @Slf4j
 @Controller("${general.basepath:/}")
 @RequiredArgsConstructor

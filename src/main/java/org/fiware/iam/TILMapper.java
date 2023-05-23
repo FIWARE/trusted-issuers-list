@@ -17,6 +17,9 @@ import org.mapstruct.Mapping;
 import java.io.IOException;
 import java.util.Objects;
 
+/**
+ * Responsible for mapping entities from the Trusted Issuers List domain to the internal model.
+ */
 @Mapper(componentModel = "jsr330")
 public interface TILMapper {
 

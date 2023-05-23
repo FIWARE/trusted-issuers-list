@@ -10,8 +10,6 @@ import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import org.fiware.iam.tir.model.ProblemDetailsVO;
 
-import java.time.format.DateTimeParseException;
-
 /**
  * Handler to catch and log all unexpected exceptions and translate them into a proper 500 response.
  */

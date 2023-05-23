@@ -19,6 +19,9 @@ import lombok.experimental.Accessors;
 
 import java.util.List;
 
+/**
+ * Data entity to represent a capabilities claim.
+ */
 @Introspected
 @Accessors(chain = true)
 @NoArgsConstructor

@@ -12,6 +12,9 @@ import org.fiware.iam.tir.model.ProblemDetailsVO;
 
 import java.net.URI;
 
+/**
+ * Catch all {@link ConflictException} and translate them into proper 409 responses.
+ */
 @Produces
 @Singleton
 @Requires(classes = { ConflictException.class, ExceptionHandler.class })
@@ -20,6 +23,7 @@ public class ConflictExceptionHandler
 		implements ExceptionHandler<ConflictException, HttpResponse<ProblemDetailsVO>> {
 
 	@Override public HttpResponse<ProblemDetailsVO> handle(HttpRequest request, ConflictException exception) {
+		log.debug("Received  a conflict for {}.", request, exception);
 		return HttpResponse.status(HttpStatus.CONFLICT).body(new ProblemDetailsVO()
 				.status(HttpStatus.CONFLICT.getCode())
 				.detail(exception.getLocalizedMessage())

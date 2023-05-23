@@ -10,8 +10,9 @@ import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import org.fiware.iam.tir.model.ProblemDetailsVO;
 
-import java.net.URI;
-
+/**
+ * Catch all {@link IllegalArgumentException} and translate them into proper 400 responses
+ */
 @Produces
 @Singleton
 @Requires(classes = { IllegalArgumentException.class, ExceptionHandler.class })
@@ -20,6 +21,7 @@ public class IllegalArgumentExceptionHandler
 		implements ExceptionHandler<IllegalArgumentException, HttpResponse<ProblemDetailsVO>> {
 
 	@Override public HttpResponse<ProblemDetailsVO> handle(HttpRequest request, IllegalArgumentException exception) {
+		log.info("Received an illegal argument for request {}.", request, exception);
 		return HttpResponse.badRequest(new ProblemDetailsVO()
 				.status(HttpStatus.BAD_REQUEST.getCode())
 				.detail(exception.getLocalizedMessage())

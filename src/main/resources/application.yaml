@@ -1,0 +1,24 @@
+micronaut:
+  application:
+    name: ${project.artifactId}
+
+  server:
+    port: 8080
+
+  metrics:
+    enabled: true
+    export:
+      prometheus:
+        step: PT2s
+        descriptions: false
+
+---
+
+datasources:
+  default:
+    url: jdbc:mysql://localhost:3306/db
+    driverClassName: com.mysql.cj.jdbc.Driver
+    username: user
+    password: password
+    schema-generate: CREATE_DROP
+    dialect: MYSQL

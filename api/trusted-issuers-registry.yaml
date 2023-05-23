@@ -1,0 +1,235 @@
+openapi: 3.0.3
+info:
+  title: Trusted Issuers Registry
+  description: |
+    The subset of the [Trusted Issuers Registryas defined by EBSI](https://api-pilot.ebsi.eu/docs/apis/trusted-issuers-registry/v4#/) as currently required by
+    the [VCVerifier](https://github.com/FIWARE/VCVerifier).
+  version: v4
+tags:
+  - name: TIR
+paths:
+  /v4/issuers/:
+    get:
+      tags:
+        - TIR
+      parameters:
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/After'
+      operationId: getIssuersV4
+      summary: Returns a list of trusted issuers.
+      responses:
+        '200':
+          description: Successfully returned a list of issuers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssuersResponse'
+        '400':
+          description: Bad Request Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /v4/issuers/{did}:
+    get:
+      tags:
+        - TIR
+      parameters:
+        - $ref: '#/components/parameters/Did'
+      operationId: getIssuerV4
+      summary: Returns a trusted issuer identified by its decentralised identifier (DID).
+      responses:
+        '200':
+          description: Successfully returend the issuer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issuer'
+        '400':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+components:
+  parameters:
+    Did:
+      name: did
+      description: Issuer's DID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: did
+        example: did:key:z6MksU6tMfbaDzvaRe5oFE4eZTVTV4HJM4fmQWWGsDGQVsEr
+    Size:
+      name: page[size]
+      description: Defines the maximum number of objects that may be returned.
+      in: query
+      required: false
+      schema:
+        type: number
+        example: 10
+    After:
+      name: page[after]
+      description: Cursor that points to the end of the page of data that has been returned.
+      in: query
+      required: false
+      schema:
+        type: string
+        example: did:key:z6MksU6tMfbaDzvaRe5oFE4eZTVTV4HJM4fmQWWGsDGQVsEr
+  schemas:
+    IssuerEntry:
+      type: object
+      properties:
+        did:
+          description: Issuer's DID
+          type: string
+          format: did
+          example: did:key:z6MksU6tMfbaDzvaRe5oFE4eZTVTV4HJM4fmQWWGsDGQVsEr
+        href:
+          description: Link to issuer
+          type: string
+          format: uri
+          example: http://my-registry.org/v3/issuers/did:key:z6MksU6tMfbaDzvaRe5oFE4eZTVTV4HJM4fmQWWGsDGQVsEr
+      required:
+        - did
+        - href
+    Links:
+      type: object
+      description: Links model used for pagination.
+      properties:
+        last:
+          description: URI of the last page
+          type: string
+          format: uri
+          example: https://my-registry.org/v3/issuers?page[after]=0&page[size]=10
+        prev:
+          description: URI of the previous page
+          type: string
+          format: uri
+          example: https://my-registry.org/v3/issuers?page[after]=2&page[size]=10
+        next:
+          description: URI of the next page
+          type: string
+          format: uri
+          example: https://my-registry.org/v3/issuers?page[after]=4&page[size]=10
+        first:
+          description: URI of the first page
+          type: string
+          format: uri
+          example: https://my-registry.org/v3/issuers?page[after]=13&page[size]=10
+    IssuersResponse:
+      type: object
+      properties:
+        self:
+          description: URI to issuers
+          type: string
+          format: uri
+        items:
+          description: list of issuers with their decentralized identifier
+          type: array
+          items:
+            $ref: '#/components/schemas/IssuerEntry'
+        total:
+          description: Total number of items in a collection
+          type: number
+          example: 10
+        pageSize:
+          description: Number of items to be returned per page
+          type: number
+          example: 5
+        links:
+          $ref: '#/components/schemas/Links'
+      required:
+        - self
+        - items
+        - total
+        - pageSize
+        - links
+    Issuer:
+      type: object
+      properties:
+        did:
+          description: Issuer's DID
+          type: string
+          format: did
+          example: did:key:z6MksU6tMfbaDzvaRe5oFE4eZTVTV4HJM4fmQWWGsDGQVsEr
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssuerAttribute'
+    IssuerAttribute:
+      type: object
+      properties:
+        hash:
+          description: sha256 hash of the payload
+          type: string
+          example: 31a014c390aa9ad2b47a1df8904c8addf87db279b06eae50797f546da63229d3
+        body:
+          description: Base64 encoded content
+          type: string
+          example: eyJhbnkiOiJBbnkgYXR0cmlidXRlIGhlcmUiLCJ0eXBlIjoiY3JlZGVudGlhbCIsImRhdGEiOiI2ZDdlNWUxZjJlYmExZDU2ZTJmZThlZjdiMTZmNGRlNSJ9
+        issuerType:
+          description: Type of the trusted issuer
+          type: string
+          enum:
+            - "RootTAO"
+            - "TAO"
+            - "TI"
+            - "Revoked"
+            - "Undefined"
+        tao:
+          description: Trusted Accredited Organization that accredited the insertion of the attribute
+          type: string
+          example: did:web:my.tao
+        rootTao:
+          description: Root chain of accreditations
+          type: string
+          example: did:web:my.root.tao
+      required:
+        - hash
+        - body
+        - issuerType
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          description: An absolute URI that identifies the problem type. When dereferenced, it SHOULD provide human-readable documentation for the problem type.
+          type: string
+          format: uri
+          ##default: about:blank
+        title:
+          description: A short summary of the problem type.
+          type: string
+          example: Internal Server Error
+        status:
+          description: The HTTP status code generated by the origin server for this occurrence of the problem.
+          type: number
+          example: 500
+        detail:
+          description: A human readable explanation specific to this occurrence of the problem.
+          type: string
+          example: Connection timeout
+        instance:
+          description: An absolute URI that identifies the specific occurrence of the problem. It may or may not yield further information if dereferenced.
+          type: string
+          format: uri

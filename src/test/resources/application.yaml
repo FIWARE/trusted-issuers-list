@@ -17,5 +17,18 @@ datasources:
     driverClassName: org.h2.Driver
     username: user
     password: password
-    schema-generate: CREATE_DROP
     dialect: H2
+
+jpa:
+  default:
+    packages-to-scan:
+      - 'org.fiware.iam.repository'
+    properties:
+      hibernate:
+        hbm2ddl:
+          auto: none
+        show_sql: true
+flyway:
+  datasources:
+    default:
+      enabled: true

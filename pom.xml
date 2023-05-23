@@ -69,6 +69,9 @@
         <version.org.openapitools.generator-maven-plugin>6.6.0</version.org.openapitools.generator-maven-plugin>
         <version.io.kokuwa.micronaut.codegen>3.3.1</version.io.kokuwa.micronaut.codegen>
 
+        <!-- test -->
+        <version.org.mockito.mocktio-all>1.10.19</version.org.mockito.mocktio-all>
+
         <!-- build -->
         <version.org.codehaus.mojo.build-helper-maven-plugin>3.4.0</version.org.codehaus.mojo.build-helper-maven-plugin>
     </properties>
@@ -155,6 +158,10 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micronaut.flyway</groupId>
+            <artifactId>micronaut-flyway</artifactId>
             <scope>runtime</scope>
         </dependency>
 
@@ -199,6 +206,12 @@
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-all</artifactId>
+            <version>${version.org.mockito.mocktio-all}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

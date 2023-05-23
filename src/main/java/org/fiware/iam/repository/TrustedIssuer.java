@@ -9,11 +9,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
 
-import java.util.ArrayList;
 import java.util.Collection;
 
 @Introspected
+@Accessors(chain = true)
 @Data
 @Entity
 @EqualsAndHashCode
@@ -22,7 +23,6 @@ public class TrustedIssuer {
 	@Id
 	private String did;
 
-	@OneToMany(mappedBy = "trustedIssuer", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-	@Join(value = "claims", type = Join.Type.FETCH)
+	@OneToMany(mappedBy = "trustedIssuer", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
 	private Collection<Capability> capabilities;
 }

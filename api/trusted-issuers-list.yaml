@@ -54,7 +54,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
       description: Update a single issuer
-      operationId: replaceIssuer
+      operationId: updateIssuer
       requestBody:
         required: true
         content:
@@ -62,8 +62,12 @@ paths:
             schema:
               $ref: '#/components/schemas/TrustedIssuer'
       responses:
-        '204':
+        '200':
           description: Successfully updated the issuer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustedIssuer'
         '404':
           description: No such issuer exists.
           content:

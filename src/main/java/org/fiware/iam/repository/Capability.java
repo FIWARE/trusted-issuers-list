@@ -11,9 +11,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.ToString;
+import lombok.experimental.Accessors;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -21,6 +25,7 @@ import java.util.Date;
 
 @Introspected
 @Data
+@Accessors(chain = true)
 @Entity
 @EqualsAndHashCode(exclude = "trustedIssuer")
 @ToString(exclude = "trustedIssuer")
@@ -42,8 +47,7 @@ public class Capability {
 	@JoinColumn(name = "trusted_issuer_id")
 	private TrustedIssuer trustedIssuer;
 
-	@OneToMany(mappedBy = "capability", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-	@Join(value = "claimValues", type = Join.Type.FETCH)
+	@OneToMany(mappedBy = "capability", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
 	private Collection<Claim> claims;
 
 }

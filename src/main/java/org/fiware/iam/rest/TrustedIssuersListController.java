@@ -1,12 +1,11 @@
 package org.fiware.iam.rest;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micronaut.core.annotation.Introspected;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.annotation.Controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.fiware.iam.TrustedIssuerMapper;
+import org.fiware.iam.TILMapper;
 import org.fiware.iam.exception.ConflictException;
 import org.fiware.iam.repository.TrustedIssuer;
 import org.fiware.iam.repository.TrustedIssuerRepository;
@@ -23,26 +22,26 @@ import java.util.Optional;
 @Introspected
 public class TrustedIssuersListController implements IssuerApi {
 
-	private static final String LOCATION_HEADER_TEMPLATE = "/v4/issuers/%s";
+	public static final String HREF_TEMPLATE = "/v4/issuers/%s";
 
 	private final TrustedIssuerRepository trustedIssuerRepository;
-	private final TrustedIssuerMapper trustedIssuerMapper;
+	private final TILMapper trustedIssuerMapper;
 
 	@Transactional
 	@Override
 	public HttpResponse<Object> createTrustedIssuer(TrustedIssuerVO trustedIssuerVO) {
-		if (trustedIssuerRepository.getByDid(trustedIssuerVO.getDid()).isPresent()) {
+		if (trustedIssuerRepository.existsById(trustedIssuerVO.getDid())) {
 			throw new ConflictException("Issuer already exists.", trustedIssuerVO.getDid());
 		}
 		TrustedIssuer persistedIssuer = trustedIssuerRepository.save(trustedIssuerMapper.map(trustedIssuerVO));
 		return HttpResponse.created(URI.create(
-				String.format(LOCATION_HEADER_TEMPLATE, persistedIssuer.getDid())));
+				String.format(HREF_TEMPLATE, persistedIssuer.getDid())));
 	}
 
 	@Override
 	public HttpResponse<Object> deleteIssuerById(String did) {
 		Optional<TrustedIssuer> optionalTrustedIssuer = trustedIssuerRepository.getByDid(did);
-		if (optionalTrustedIssuer.isEmpty()) {
+		if (!trustedIssuerRepository.existsById(did)) {
 			return HttpResponse.notFound();
 		}
 		trustedIssuerRepository.delete(optionalTrustedIssuer.get());
@@ -50,16 +49,14 @@ public class TrustedIssuersListController implements IssuerApi {
 	}
 
 	@Override
-	public HttpResponse<Object> replaceIssuer(String did, TrustedIssuerVO trustedIssuerVO) {
-		Optional<TrustedIssuer> optionalTrustedIssuer = trustedIssuerRepository.getByDid(did);
-		if (optionalTrustedIssuer.isEmpty()) {
+	public HttpResponse<TrustedIssuerVO> updateIssuer(String did, TrustedIssuerVO trustedIssuerVO) {
+		if (!trustedIssuerRepository.existsById(did)) {
 			return HttpResponse.notFound();
 		}
 		if (!did.equals(trustedIssuerVO.getDid())) {
 			throw new IllegalArgumentException("Did does not match the issuer object.");
 		}
-		TrustedIssuer trustedIssuer = trustedIssuerMapper.map(trustedIssuerVO);
-		trustedIssuerRepository.update(trustedIssuer);
-		return HttpResponse.noContent();
+		return HttpResponse.ok(
+				trustedIssuerMapper.map(trustedIssuerRepository.update(trustedIssuerMapper.map(trustedIssuerVO))));
 	}
 }

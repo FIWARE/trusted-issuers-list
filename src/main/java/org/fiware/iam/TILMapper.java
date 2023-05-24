@@ -4,12 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import org.fiware.iam.repository.Capability;
+import org.fiware.iam.repository.Credential;
 import org.fiware.iam.repository.Claim;
 import org.fiware.iam.repository.ClaimValue;
 import org.fiware.iam.repository.TrustedIssuer;
-import org.fiware.iam.til.model.CapabilitiesVO;
 import org.fiware.iam.til.model.ClaimVO;
+import org.fiware.iam.til.model.CredentialsVO;
 import org.fiware.iam.til.model.TrustedIssuerVO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -32,16 +32,16 @@ public interface TILMapper {
 
 	@Mapping(target = "validFrom", source = "validFor.from")
 	@Mapping(target = "validTo", source = "validFor.to")
-	Capability map(CapabilitiesVO capabilitiesVO);
+	Credential map(CredentialsVO credentialsVO);
 
-	CapabilitiesVO map(Capability capability);
+	CredentialsVO map(Credential credential);
 
 	default ClaimVO map(Claim claim) {
 		return new ClaimVO()
 				.name(claim.getName())
 				.allowedValues(
 						claim.getClaimValues().stream().map(
-										this::readToObject)
+										TILMapper::readToObject)
 								.filter(Objects::nonNull)
 								.toList());
 	}
@@ -64,7 +64,7 @@ public interface TILMapper {
 
 	// in order to also properly read primitives(string,number,boolean) we try to read the value as such first and
 	// ignore potential exceptions and read it as an object just as a last step.
-	private Object readToObject(ClaimValue claimValue) {
+	static Object readToObject(ClaimValue claimValue) {
 		try {
 			return OBJECT_READER.readValue(claimValue.getValue(), Number.class);
 		} catch (IOException ignored) {

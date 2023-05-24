@@ -16,9 +16,9 @@ public interface TrustedIssuerRepository extends PageableRepository<TrustedIssue
 	 * @param did of the issuer
 	 * @return the complete issuer
 	 */
-	@Join(value = "capabilities", type = Join.Type.LEFT_FETCH)
-	@Join(value = "capabilities.claims", type = Join.Type.LEFT_FETCH)
-	@Join(value = "capabilities.claims.claimValues", type = Join.Type.LEFT_FETCH)
+	@Join(value = "credentials", type = Join.Type.LEFT_FETCH)
+	@Join(value = "credentials.claims", type = Join.Type.LEFT_FETCH)
+	@Join(value = "credentials.claims.claimValues", type = Join.Type.LEFT_FETCH)
 	Optional<TrustedIssuer> getByDid(String did);
 }
 

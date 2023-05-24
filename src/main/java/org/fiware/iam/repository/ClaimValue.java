@@ -1,5 +1,7 @@
 package org.fiware.iam.repository;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.micronaut.core.annotation.Introspected;
 import io.micronaut.core.annotation.Nullable;
 import jakarta.persistence.Entity;
@@ -37,6 +39,7 @@ public class ClaimValue {
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "claim_id")
+	@JsonIgnore
 	private Claim claim;
 
 	public ClaimValue(Integer id, String value, @Nullable Claim claim) {

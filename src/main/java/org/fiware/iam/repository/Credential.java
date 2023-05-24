@@ -19,7 +19,7 @@ import java.util.Collection;
 import java.util.Date;
 
 /**
- * Data entity to map an issuers capability
+ * Data entity to map an issuers credentials
  */
 @Introspected
 @Data
@@ -27,7 +27,7 @@ import java.util.Date;
 @Entity
 @EqualsAndHashCode(exclude = "trustedIssuer")
 @ToString(exclude = "trustedIssuer")
-public class Capability {
+public class Credential {
 
 	@GeneratedValue
 	@Id
@@ -45,7 +45,7 @@ public class Capability {
 	@JoinColumn(name = "trusted_issuer_id")
 	private TrustedIssuer trustedIssuer;
 
-	@OneToMany(mappedBy = "capability", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+	@OneToMany(mappedBy = "credential", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
 	private Collection<Claim> claims;
 
 }

@@ -1,7 +1,6 @@
 package org.fiware.iam.repository;
 
 import io.micronaut.core.annotation.Introspected;
-import io.micronaut.data.annotation.Join;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -27,5 +26,5 @@ public class TrustedIssuer {
 	private String did;
 
 	@OneToMany(mappedBy = "trustedIssuer", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
-	private Collection<Capability> capabilities;
+	private Collection<Credential> credentials;
 }

@@ -5,14 +5,10 @@ import io.micronaut.http.HttpStatus;
 import io.micronaut.http.client.exceptions.HttpClientResponseException;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import lombok.RequiredArgsConstructor;
-import org.fiware.iam.repository.Capability;
-import org.fiware.iam.repository.Claim;
-import org.fiware.iam.repository.ClaimValue;
-import org.fiware.iam.repository.TrustedIssuer;
 import org.fiware.iam.repository.TrustedIssuerRepository;
 import org.fiware.iam.til.api.IssuerApiTestClient;
-import org.fiware.iam.til.model.CapabilitiesVOTestExample;
 import org.fiware.iam.til.model.ClaimVOTestExample;
+import org.fiware.iam.til.model.CredentialsVOTestExample;
 import org.fiware.iam.til.model.TimeRangeVOTestExample;
 import org.fiware.iam.til.model.TrustedIssuerVO;
 import org.fiware.iam.til.model.TrustedIssuerVOTestExample;
@@ -65,8 +61,8 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
 		HttpResponse<IssuerVO> issuerResponse = testClient.getIssuerV4(DID_HAPPYPETS);
 		assertEquals(HttpStatus.OK, issuerResponse.getStatus(), "The issuer should have been returned.");
 		assertTrue(issuerResponse.getBody().isPresent(), "The issuerVO should have been returned.");
-		assertEquals(storedIssuer.getCapabilities().size(), issuerResponse.body().getAttributes().size(),
-				"All capabilities should be returned as attributes.");
+		assertEquals(storedIssuer.getCredentials().size(), issuerResponse.body().getAttributes().size(),
+				"All credentials should be returned as attributes.");
 	}
 
 	@ParameterizedTest
@@ -83,21 +79,21 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
 				Arguments.of(
 						TrustedIssuerVOTestExample.build()),
 				Arguments.of(
-						TrustedIssuerVOTestExample.build().capabilities(List.of(CapabilitiesVOTestExample.build()))),
+						TrustedIssuerVOTestExample.build().credentials(List.of(CredentialsVOTestExample.build()))),
 				Arguments.of(TrustedIssuerVOTestExample.build()
-						.capabilities(List.of(CapabilitiesVOTestExample.build().validFor(
+						.credentials(List.of(CredentialsVOTestExample.build().validFor(
 								TimeRangeVOTestExample.build())))),
 				Arguments.of(TrustedIssuerVOTestExample.build()
-						.capabilities(List.of(CapabilitiesVOTestExample.build().validFor(
+						.credentials(List.of(CredentialsVOTestExample.build().validFor(
 								TimeRangeVOTestExample.build().to(null))))),
 				Arguments.of(TrustedIssuerVOTestExample.build()
-						.capabilities(List.of(CapabilitiesVOTestExample.build().validFor(
+						.credentials(List.of(CredentialsVOTestExample.build().validFor(
 								TimeRangeVOTestExample.build().from(null))))),
 				Arguments.of(TrustedIssuerVOTestExample.build()
-						.capabilities(List.of(CapabilitiesVOTestExample.build().claims(List.of(
+						.credentials(List.of(CredentialsVOTestExample.build().claims(List.of(
 								ClaimVOTestExample.build()))))),
 				Arguments.of(TrustedIssuerVOTestExample.build()
-						.capabilities(List.of(CapabilitiesVOTestExample.build().claims(List.of(
+						.credentials(List.of(CredentialsVOTestExample.build().claims(List.of(
 								ClaimVOTestExample.build().allowedValues(List.of("test", 1)))))))
 		);
 	}

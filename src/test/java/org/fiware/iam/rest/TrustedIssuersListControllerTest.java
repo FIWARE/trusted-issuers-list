@@ -8,8 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.fiware.iam.repository.TrustedIssuerRepository;
 import org.fiware.iam.til.api.IssuerApiTestClient;
 import org.fiware.iam.til.api.IssuerApiTestSpec;
-import org.fiware.iam.til.model.CapabilitiesVOTestExample;
 import org.fiware.iam.til.model.ClaimVOTestExample;
+import org.fiware.iam.til.model.CredentialsVOTestExample;
 import org.fiware.iam.til.model.TimeRangeVOTestExample;
 import org.fiware.iam.til.model.TrustedIssuerVO;
 import org.fiware.iam.til.model.TrustedIssuerVOTestExample;
@@ -68,21 +68,21 @@ public class TrustedIssuersListControllerTest
 				Arguments.of(
 						TrustedIssuerVOTestExample.build()),
 				Arguments.of(
-						TrustedIssuerVOTestExample.build().capabilities(List.of(CapabilitiesVOTestExample.build()))),
+						TrustedIssuerVOTestExample.build().credentials(List.of(CredentialsVOTestExample.build()))),
 				Arguments.of(TrustedIssuerVOTestExample.build()
-						.capabilities(List.of(CapabilitiesVOTestExample.build().validFor(
+						.credentials(List.of(CredentialsVOTestExample.build().validFor(
 								TimeRangeVOTestExample.build())))),
 				Arguments.of(TrustedIssuerVOTestExample.build()
-						.capabilities(List.of(CapabilitiesVOTestExample.build().validFor(
+						.credentials(List.of(CredentialsVOTestExample.build().validFor(
 								TimeRangeVOTestExample.build().to(null))))),
 				Arguments.of(TrustedIssuerVOTestExample.build()
-						.capabilities(List.of(CapabilitiesVOTestExample.build().validFor(
+						.credentials(List.of(CredentialsVOTestExample.build().validFor(
 								TimeRangeVOTestExample.build().from(null))))),
 				Arguments.of(TrustedIssuerVOTestExample.build()
-						.capabilities(List.of(CapabilitiesVOTestExample.build().claims(List.of(
+						.credentials(List.of(CredentialsVOTestExample.build().claims(List.of(
 								ClaimVOTestExample.build()))))),
 				Arguments.of(TrustedIssuerVOTestExample.build()
-						.capabilities(List.of(CapabilitiesVOTestExample.build().claims(List.of(
+						.credentials(List.of(CredentialsVOTestExample.build().claims(List.of(
 								ClaimVOTestExample.build().allowedValues(List.of("test", 1)))))))
 		);
 	}

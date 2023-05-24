@@ -12,7 +12,7 @@ paths:
       tags:
         - issuer
       operationId: createTrustedIssuer
-      summary: Create a trusted issuer and its capabilities
+      summary: Create a trusted issuer and its credentials
       description: create trusted issuer
       requestBody:
         required: true
@@ -102,7 +102,7 @@ components:
           type: string
           format: date-time
           example: '2023-07-21T17:32:28Z'
-    Capabilities:
+    Credentials:
       type: object
       properties:
         validFor:
@@ -120,10 +120,10 @@ components:
         did:
           type: string
           example: did:elsi:happypets
-        capabilities:
+        credentials:
           type: array
           items:
-            $ref: '#/components/schemas/Capabilities'
+            $ref: '#/components/schemas/Credentials'
     Claim:
       type: object
       properties:

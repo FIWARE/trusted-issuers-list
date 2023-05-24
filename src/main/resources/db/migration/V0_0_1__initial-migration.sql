@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS `trusted_issuer` (
     `did` varchar(255) NOT NULL PRIMARY KEY
 );
 
-CREATE TABLE IF NOT EXISTS `capability` (
+CREATE TABLE IF NOT EXISTS `credential` (
     `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `valid_from` date,
     `valid_to` date,
@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS `capability` (
 CREATE TABLE IF NOT EXISTS `claim` (
     `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `name` varchar(255) NOT NULL,
-    `capability_id` int NOT NULL,
-    CONSTRAINT `fk_capability` FOREIGN KEY (`capability_id`) REFERENCES `capability` (`id`) ON DELETE CASCADE
+    `credential_id` int NOT NULL,
+    CONSTRAINT `fk_credential` FOREIGN KEY (`credential_id`) REFERENCES `credential` (`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS `claim_value` (

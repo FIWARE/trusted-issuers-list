@@ -20,7 +20,7 @@ import lombok.experimental.Accessors;
 import java.util.List;
 
 /**
- * Data entity to represent a capabilities claim.
+ * Data entity to represent a credentials claim.
  */
 @Introspected
 @Accessors(chain = true)
@@ -28,8 +28,8 @@ import java.util.List;
 @Data
 @Entity
 @Getter
-@EqualsAndHashCode(exclude = "capability")
-@ToString(exclude = "capability")
+@EqualsAndHashCode(exclude = "credential")
+@ToString(exclude = "credential")
 public class Claim {
 
 	@GeneratedValue
@@ -39,17 +39,17 @@ public class Claim {
 	private String name;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "capability_id")
-	private Capability capability;
+	@JoinColumn(name = "credential_id")
+	private Credential credential;
 
 	@OneToMany(mappedBy = "claim", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<ClaimValue> claimValues;
 
-	public Claim(Integer id, String name, Capability capability,
+	public Claim(Integer id, String name, Credential credential,
 			@Nullable List<ClaimValue> claimValues) {
 		this.id = id;
 		this.name = name;
-		this.capability = capability;
+		this.credential = credential;
 		this.claimValues = claimValues;
 	}
 }

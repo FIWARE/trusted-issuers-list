@@ -14,11 +14,14 @@ import org.fiware.iam.tir.model.IssuerAttributeVO;
 import org.fiware.iam.tir.model.IssuerVO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.LogManager;
 
 /**
  * Responsible for mapping entities from the (EBSI-) Trusted Issuers Registry domain to the internal model.
@@ -26,6 +29,7 @@ import java.util.Objects;
 @Mapper(componentModel = "jsr330")
 public interface TIRMapper {
 
+	Logger LOGGER = LoggerFactory.getLogger(TIRMapper.class);
 	ObjectWriter OBJECT_WRITER = new ObjectMapper().writer();
 
 	CredentialsVO map(Credential credential);
@@ -64,8 +68,9 @@ public interface TIRMapper {
 			issuerAttributeVO.body(
 					Base64.getEncoder().encodeToString(body));
 			issuerAttributeVO.hash(Base64.getEncoder().encodeToString(getSHA256(body)));
-		} catch (JsonProcessingException ignored) {
-			 ignored.toString();
+		} catch (JsonProcessingException jpe) {
+			LOGGER.warn("Was not able to process the given credential {}. Will not include it into the issuer.",
+					credentialsVO, jpe);
 		}
 		return issuerAttributeVO;
 	}

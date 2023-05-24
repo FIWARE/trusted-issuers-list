@@ -13,6 +13,8 @@ import org.fiware.iam.til.model.CredentialsVO;
 import org.fiware.iam.til.model.TrustedIssuerVO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -22,6 +24,8 @@ import java.util.Objects;
  */
 @Mapper(componentModel = "jsr330")
 public interface TILMapper {
+
+	Logger LOGGER = LoggerFactory.getLogger(TIRMapper.class);
 
 	ObjectReader OBJECT_READER = new ObjectMapper().reader();
 	ObjectWriter OBJECT_WRITER = new ObjectMapper().writer();
@@ -54,6 +58,7 @@ public interface TILMapper {
 									try {
 										return OBJECT_WRITER.writeValueAsString(value);
 									} catch (JsonProcessingException e) {
+										LOGGER.warn("Was not able to serialize the claim value {}. Will skip it.", value, e);
 										return null;
 									}
 								})
@@ -65,21 +70,26 @@ public interface TILMapper {
 	// in order to also properly read primitives(string,number,boolean) we try to read the value as such first and
 	// ignore potential exceptions and read it as an object just as a last step.
 	static Object readToObject(ClaimValue claimValue) {
+		LOGGER.debug("Try to read the claimValue {} to its proper object representation.", claimValue);
 		try {
 			return OBJECT_READER.readValue(claimValue.getValue(), Number.class);
 		} catch (IOException ignored) {
+			LOGGER.debug("Given value is not a number, try next type.");
 		}
 		try {
 			return OBJECT_READER.readValue(claimValue.getValue(), String.class);
 		} catch (IOException ignored) {
+			LOGGER.debug("Given value is not a string, try next type.");
 		}
 		try {
 			return OBJECT_READER.readValue(claimValue.getValue(), Boolean.class);
 		} catch (IOException ignored) {
+			LOGGER.debug("Given value is not a boolean, try next type.");
 		}
 		try {
 			return OBJECT_READER.readValue(claimValue.getValue(), Object.class);
 		} catch (IOException e) {
+			LOGGER.warn("Was not able to read the claimValue {} to an object. Will return null.", claimValue, e);
 			return null;
 		}
 	}

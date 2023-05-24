@@ -43,7 +43,7 @@
         <project.summary>Trusted Issuers List service, as defined by the trust-framework of the DOME Reference
             Archtiecture.
         </project.summary>
-        <project.url>https://github.com/wistefan/trusted-issuers-list</project.url>
+        <project.url>https://github.com/fiware/trusted-issuers-list</project.url>
         <project.license.name>Apache License 2.0</project.license.name>
         <project.license.identifier>Apache License 2.0</project.license.identifier>
         <project.license.url>https://www.apache.org/licenses/LICENSE-2.0</project.license.url>
@@ -56,7 +56,7 @@
         <!-- docker -->
         <exec.mainClass>org.fiware.iam.Application</exec.mainClass>
         <image.registry>quay.io</image.registry>
-        <image.repository>wi_stefan</image.repository>
+        <image.repository>fiware</image.repository>
 
         <!-- lazy dev -->
         <version.org.mapstruct>1.5.3.Final</version.org.mapstruct>

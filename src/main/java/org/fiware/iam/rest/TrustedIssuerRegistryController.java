@@ -101,6 +101,14 @@ public class TrustedIssuerRegistryController implements TirApi {
 			}
 		}
 
+		if (issuerEntries.isEmpty()) {
+			return HttpResponse.ok(new IssuersResponseVO()
+					.items(List.of())
+					.total(0)
+					.pageSize(0)
+					.self(SELF_REF));
+		}
+
 		return HttpResponse.ok(new IssuersResponseVO()
 				.items(issuerEntries)
 				.total((int) trustedIssuerRepository.count())

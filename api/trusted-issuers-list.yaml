@@ -7,7 +7,7 @@ tags:
   - name: verfication
   - name: issuer
 paths:
-  /issuer:
+  /v4/issuers:
     post:
       tags:
         - issuer
@@ -35,7 +35,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-  /issuer/{did}:
+  /v4/issuers/{did}:
     delete:
       tags:
         - issuer

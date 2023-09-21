@@ -52,6 +52,15 @@ public class TrustedIssuersListController implements IssuerApi {
 	}
 
 	@Override
+	public HttpResponse<TrustedIssuerVO> getIssuer(String did) {
+		return trustedIssuerRepository
+				.getByDid(did)
+				.map(trustedIssuerMapper::map)
+				.map(HttpResponse::ok)
+				.orElseGet(HttpResponse::notFound);
+	}
+
+	@Override
 	public HttpResponse<TrustedIssuerVO> updateIssuer(String did, TrustedIssuerVO trustedIssuerVO) {
 		if (!trustedIssuerRepository.existsById(did)) {
 			return HttpResponse.notFound();

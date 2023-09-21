@@ -7,7 +7,7 @@ tags:
   - name: verfication
   - name: issuer
 paths:
-  /v4/issuers:
+  /issuer:
     post:
       tags:
         - issuer
@@ -35,7 +35,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-  /v4/issuers/{did}:
+  /issuer/{did}:
+    get:
+      tags:
+        - issuer
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      description: Get a single issuer
+      operationId: getIssuer
+      responses:
+        '200':
+          description: Successfully retrieved the issuer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustedIssuer'
+        '404':
+          description: No such issuer exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
     delete:
       tags:
         - issuer

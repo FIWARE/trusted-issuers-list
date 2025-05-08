@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS `trusted_issuer` (
-    `did` varchar(1024) NOT NULL PRIMARY KEY
+    `did` varchar(255) NOT NULL PRIMARY KEY
 );
 
 CREATE TABLE IF NOT EXISTS `credential` (
@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS `credential` (
     `valid_from` date,
     `valid_to` date,
     `credentials_type` varchar(255) NOT NULL,
-    `trusted_issuer_id` varchar(1024) NOT NULL,
+    `trusted_issuer_id` varchar(255) NOT NULL,
     CONSTRAINT `fk_trusted_issuer` FOREIGN KEY (`trusted_issuer_id`) REFERENCES `trusted_issuer` (`did`) ON DELETE CASCADE
 );
 

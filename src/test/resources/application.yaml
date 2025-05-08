@@ -32,5 +32,5 @@ flyway:
   datasources:
     default:
       enabled: true
-  placeholders:
-    modify_column: ALTER
+      placeholders:
+        modify_column: ALTER

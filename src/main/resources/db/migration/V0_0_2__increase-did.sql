@@ -1,0 +1,1 @@
+ALTER TABLE `trusted_issuer` ALTER COLUMN `did`  varchar(1024) NOT NULL PRIMARY KEY;

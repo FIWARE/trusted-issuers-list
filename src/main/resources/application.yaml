@@ -34,5 +34,4 @@ flyway:
   datasources:
     default:
       enabled: true
-      placeholders:
-        modify_column: MODIFY
+      locations:  classpath:db/migration/common,classpath:db/migration/h2

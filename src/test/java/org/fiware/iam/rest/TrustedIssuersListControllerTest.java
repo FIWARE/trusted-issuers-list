@@ -6,6 +6,7 @@ import io.micronaut.http.client.exceptions.HttpClientResponseException;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import lombok.RequiredArgsConstructor;
 import org.fiware.iam.repository.TrustedIssuerRepository;
+import org.fiware.iam.TILMapper;
 import org.fiware.iam.til.api.IssuerApiTestClient;
 import org.fiware.iam.til.api.IssuerApiTestSpec;
 import org.fiware.iam.til.model.*;
@@ -28,6 +29,7 @@ public class TrustedIssuersListControllerTest
 
     public final IssuerApiTestClient testClient;
     public final TrustedIssuerRepository repository;
+    public final TILMapper trustedIssuerMapper;
 
     private TrustedIssuerVO issuerToCreate;
     private UpdatePair issuerUpdate;
@@ -152,7 +154,12 @@ public class TrustedIssuersListControllerTest
         HttpResponse<?> updateResponse = testClient.updateIssuer(issuerUpdate.issuerUpdate.getDid(),
                 issuerUpdate.issuerUpdate);
         assertEquals(HttpStatus.OK, updateResponse.getStatus(), "The issuer should have been updated.");
-    }
+        
+        TrustedIssuerVO updatedIssuerVO = trustedIssuerMapper.map(repository.getByDid(issuerUpdate.issuerUpdate.getDid()).get());
+
+        // Double map VO entity to avoid type mismatch due to use of List.of in builder
+        assertEquals(updatedIssuerVO, trustedIssuerMapper.map(trustedIssuerMapper.map(issuerUpdate.issuerUpdate)), "The updated issuer should match.");
+    }  
 
     @ParameterizedTest
     @MethodSource("validIssuerUpdates")

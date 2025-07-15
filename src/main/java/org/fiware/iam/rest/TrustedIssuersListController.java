@@ -11,10 +11,15 @@ import org.fiware.iam.repository.TrustedIssuer;
 import org.fiware.iam.repository.TrustedIssuerRepository;
 import org.fiware.iam.til.api.IssuerApi;
 import org.fiware.iam.til.model.TrustedIssuerVO;
+import org.fiware.iam.repository.Credential;
+import org.fiware.iam.repository.CredentialRepository;
 
 import javax.transaction.Transactional;
 import java.net.URI;
+import java.util.Collection;
 import java.util.Optional;
+
+import io.micronaut.http.annotation.Post;
 
 /**
  * Implementation  of the (proprietary) trusted-list api to manage the issuers.
@@ -28,6 +33,7 @@ public class TrustedIssuersListController implements IssuerApi {
 	public static final String HREF_TEMPLATE = "/v4/issuers/%s";
 
 	private final TrustedIssuerRepository trustedIssuerRepository;
+	private final CredentialRepository credentialRepository;
 	private final TILMapper trustedIssuerMapper;
 
 	@Transactional
@@ -62,12 +68,17 @@ public class TrustedIssuersListController implements IssuerApi {
 
 	@Override
 	public HttpResponse<TrustedIssuerVO> updateIssuer(String did, TrustedIssuerVO trustedIssuerVO) {
-		if (!trustedIssuerRepository.existsById(did)) {
+		Optional<TrustedIssuer> optionalTrustedIssuer = trustedIssuerRepository.getByDid(did);
+		if (optionalTrustedIssuer.isEmpty()) {
 			return HttpResponse.notFound();
 		}
 		if (!did.equals(trustedIssuerVO.getDid())) {
 			throw new IllegalArgumentException("Did does not match the issuer object.");
 		}
+
+		Collection<Credential> credentials = optionalTrustedIssuer.get().getCredentials();
+		credentialRepository.deleteAll(credentials);
+
 		return HttpResponse.ok(
 				trustedIssuerMapper.map(trustedIssuerRepository.update(trustedIssuerMapper.map(trustedIssuerVO))));
 	}

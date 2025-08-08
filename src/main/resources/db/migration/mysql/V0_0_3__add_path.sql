@@ -1,1 +1,1 @@
-ALTER TABLE `claim` MODIFY COLUMN `path` varchar(1024);
+ALTER TABLE `claim` ADD COLUMN `path` varchar(1024);

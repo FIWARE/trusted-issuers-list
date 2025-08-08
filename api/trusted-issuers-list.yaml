@@ -150,6 +150,10 @@ components:
         name:
           type: string
           example: roles
+        path:
+          type: string
+          description: json path to the restricted claim
+          example: "$.roles[*].names[*]"
         allowedValues:
           type: array
           items:

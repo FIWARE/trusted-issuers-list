@@ -37,6 +37,7 @@ public interface TIRMapper {
 	default ClaimVO map(Claim claim) {
 		return new ClaimVO()
 				.name(claim.getName())
+				.path(claim.getPath())
 				.allowedValues(
 						claim.getClaimValues().stream().map(
 										TILMapper::readToObject)

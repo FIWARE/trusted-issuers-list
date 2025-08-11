@@ -43,6 +43,7 @@ public interface TILMapper {
 	default ClaimVO map(Claim claim) {
 		return new ClaimVO()
 				.name(claim.getName())
+				.path(claim.getPath())
 				.allowedValues(
 						claim.getClaimValues().stream().map(
 										TILMapper::readToObject)
@@ -53,6 +54,7 @@ public interface TILMapper {
 	default Claim map(ClaimVO claimVO) {
 		return new Claim()
 				.setName(claimVO.getName())
+				.setPath(claimVO.getPath())
 				.setClaimValues(
 						claimVO.getAllowedValues().stream().map(value -> {
 									try {

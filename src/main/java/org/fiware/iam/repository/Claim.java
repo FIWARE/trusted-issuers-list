@@ -34,13 +34,5 @@ public class Claim {
 
 	@OneToMany(mappedBy = "claim", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<ClaimValue> claimValues;
-
-	public Claim(Integer id, String name, @Nullable String path, Credential credential,
-				 @Nullable List<ClaimValue> claimValues) {
-		this.id = id;
-		this.name = name;
-		this.path = path;
-		this.credential = credential;
-		this.claimValues = claimValues;
-	}
+	
 }

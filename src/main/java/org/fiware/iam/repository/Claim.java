@@ -26,6 +26,7 @@ public class Claim {
 	private Integer id;
 
 	private String name;
+	private String path;
 
 	private String path;
 

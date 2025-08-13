@@ -1,6 +1,6 @@
 micronaut:
   server:
-    port: 8080
+    port: -1
 
   metrics:
     enabled: true

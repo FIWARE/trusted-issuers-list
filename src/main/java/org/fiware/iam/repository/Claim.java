@@ -28,8 +28,6 @@ public class Claim {
 	private String name;
 	private String path;
 
-	private String path;
-
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "credential_id")
 	private Credential credential;

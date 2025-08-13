@@ -8,9 +8,7 @@ import org.fiware.iam.repository.Credential;
 import org.fiware.iam.repository.Claim;
 import org.fiware.iam.repository.ClaimValue;
 import org.fiware.iam.repository.TrustedIssuer;
-import org.fiware.iam.til.model.ClaimVO;
-import org.fiware.iam.til.model.CredentialsVO;
-import org.fiware.iam.til.model.TrustedIssuerVO;
+import org.fiware.iam.til.model.*;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.slf4j.Logger;
@@ -38,6 +36,8 @@ public interface TILMapper {
 	@Mapping(target = "validTo", source = "validFor.to")
 	Credential map(CredentialsVO credentialsVO);
 
+	@Mapping(target = "validFor.from", source = "validFrom")
+	@Mapping(target = "validFor.to", source = "validTo")
 	CredentialsVO map(Credential credential);
 
 	default ClaimVO map(Claim claim) {

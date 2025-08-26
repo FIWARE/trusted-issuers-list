@@ -15,6 +15,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Date;
 
@@ -34,10 +35,10 @@ public class Credential {
 	private Integer id;
 
 	@Nullable
-	private Date validFrom;
+	private Instant validFrom;
 
 	@Nullable
-	private Date validTo;
+	private Instant validTo;
 
 	private String credentialsType;
 

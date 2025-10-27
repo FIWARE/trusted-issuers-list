@@ -45,21 +45,39 @@ After that, its accessible at ```localhost:8080```.
 Configurations can be provided with the standard mechanisms of the [Micronaut-Framework](https://micronaut.io/), e.g. [environment variables or appliction.yaml file](https://docs.micronaut.io/3.1.3/guide/index.html#configurationProperties).
 The following table concentrates on the most important configuration parameters:
 
-| Property                              | Env-Var                                 | Description                                                           | Default                              |
-|---------------------------------------|-----------------------------------------|-----------------------------------------------------------------------|--------------------------------------|
-| `micronaut.server.port`               | `MICRONAUT_SERVER_PORT`                 | Server port to be used for the notfication proxy.                     | 8080                                 |
-| `micronaut.metrics.enabled`           | `MICRONAUT_METRICS_ENABLED`             | Enable the metrics gathering                                          | true                                 |
-| `datasources.default.url`             | `DATASOURCES_DEFAULT_URL`               | JDBC connection string to the database.                               | ```jdbc:mysql://localhost:3306/db``` |
-| `datasources.default.driverClassName` | `DATASOURCES_DEFAULT_DRIVER_CLASS_NAME` | Driver to be used for the database connection.                        | ```com.mysql.cj.jdbc.Driver```       |
-| `datasources.default.username`        | `DATASOURCES_DEFAULT_USERNAME`          | Username to authenticate at the database.                             | ```user```                           |
-| `datasources.default.password`        | `DATASOURCES_DEFAULT_PASSWORD`          | Password to authenticate at the database.                             | ```password```                       |
-| `datasources.default.dialect`         | `DATASOURCES_DEFAULT_DIALECT`           | Dialect to be used with the DB. Currently MYSQL and H2 are supported. | ```MYSQL```                          |
+| Property                              | Env-Var                                 | Description                                                                     | Default                              |
+|---------------------------------------|-----------------------------------------|---------------------------------------------------------------------------------|--------------------------------------|
+| `micronaut.server.port`               | `MICRONAUT_SERVER_PORT`                 | Server port to be used for the notification proxy.                              | 8080                                 |
+| `micronaut.metrics.enabled`           | `MICRONAUT_METRICS_ENABLED`             | Enable the metrics gathering                                                    | true                                 |
+| `datasources.default.url`             | `DATASOURCES_DEFAULT_URL`               | JDBC connection string to the database.                                         | ```jdbc:mysql://localhost:3306/db``` |
+| `datasources.default.driverClassName` | `DATASOURCES_DEFAULT_DRIVER_CLASS_NAME` | Driver to be used for the database connection.                                  | ```com.mysql.cj.jdbc.Driver```       |
+| `datasources.default.username`        | `DATASOURCES_DEFAULT_USERNAME`          | Username to authenticate at the database.                                       | ```user```                           |
+| `datasources.default.password`        | `DATASOURCES_DEFAULT_PASSWORD`          | Password to authenticate at the database.                                       | ```password```                       |
+| `datasources.default.dialect`         | `DATASOURCES_DEFAULT_DIALECT`           | Dialect to be used with the DB. Currently MYSQL, H2 and POSTGRES are supported. | ```MYSQL```                          |
 
 ### Database
 
-Trusted-Issuers-List requires an SQL database. It currently supports MySql-compatible DBs and H2 (as an In-Memory DB for dev/test purposes).
+Trusted-Issuers-List requires an SQL database. It currently supports MySql-compatible DBs and H2 (as an In-Memory DB for dev/test purposes) and PostgreSQL.
 Migrations are applied via [flyway](https://flywaydb.org/), see the [migration-scripts](./src/main/resources/db/migration) for the schema.
 
+
+By default, the system is configured to use MySQL. To run it with PostgreSQL, you should update the following configuration:
+
+```yaml
+# Update default datasource dialect and driver
+datasources:
+  default:
+    url: jdbc:postgresql://localhost:5432/db
+    driverClassName: org.postgresql.Driver
+    username: superuser
+    password: superpassword
+    dialect: POSTGRES
+# Update migration scripts location
+flyway:
+  datasources:
+    default:
+      locations: classpath:db/migration/postgresql
+```
 ## Usage
 
 2 APIs are provided by the service:

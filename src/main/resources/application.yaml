@@ -21,6 +21,16 @@ datasources:
     username: user
     password: password
     dialect: MYSQL
+
+# Postgres connection example
+#datasources:
+#  default:
+#    url: jdbc:postgresql://localhost:5432/db
+#    driverClassName: org.postgresql.Driver
+#    username: user
+#    password: pwd
+#    dialect: POSTGRES
+
 jpa:
   default:
     packages-to-scan:
@@ -35,3 +45,7 @@ flyway:
     default:
       enabled: true
       locations:  classpath:db/migration/common,classpath:db/migration/mysql
+      # H2 migration
+      # locations:  classpath:db/migration/common,classpath:db/migration/mysql
+      # Postgresql migration
+      # locations:  classpath:db/migration/postgresql

@@ -245,6 +245,29 @@
                 <groupId>org.openapitools</groupId>
                 <artifactId>openapi-generator-maven-plugin</artifactId>
                 <version>${version.org.openapitools.generator-maven-plugin}</version>
+                <configuration>
+                    <strictSpec>true</strictSpec>
+                    <generateAliasAsModel>true</generateAliasAsModel>
+                    <generateApiTests>true</generateApiTests>
+                    <generatorName>micronaut</generatorName>
+                    <modelNameSuffix>VO</modelNameSuffix>
+                    <output>${project.build.directory}</output>
+                    <configOptions>
+                        <fullJavaUtil>true</fullJavaUtil>
+                        <useOptional>false</useOptional>
+                        <useGenericResponse>true</useGenericResponse>
+                        <useLombokGenerated>true</useLombokGenerated>
+                        <introspected>true</introspected>
+                        <useBeanValidation>false</useBeanValidation>
+                        <supportAsync>false</supportAsync>
+                        <jacksonDatabindNullable>false</jacksonDatabindNullable>
+                        <generateExamples>true</generateExamples>
+                        <serdeable>false</serdeable>
+                    </configOptions>
+                    <typeMappings>
+                        <typeMapping>java.util.Date=java.time.Instant</typeMapping>
+                    </typeMappings>
+                </configuration>
                 <executions>
                     <execution>
                         <id>tir</id>
@@ -255,28 +278,7 @@
                         <configuration>
                             <inputSpec>./api/trusted-issuers-registry.yaml</inputSpec>
                             <apiPackage>org.fiware.iam.tir.api</apiPackage>
-                            <strictSpec>true</strictSpec>
                             <modelPackage>org.fiware.iam.tir.model</modelPackage>
-                            <generateAliasAsModel>true</generateAliasAsModel>
-                            <generateApiTests>true</generateApiTests>
-                            <generatorName>micronaut</generatorName>
-                            <modelNameSuffix>VO</modelNameSuffix>
-                            <output>${project.build.directory}</output>
-                            <configOptions>
-                                <fullJavaUtil>true</fullJavaUtil>
-                                <useOptional>false</useOptional>
-                                <useGenericResponse>true</useGenericResponse>
-                                <useLombokGenerated>true</useLombokGenerated>
-                                <introspected>true</introspected>
-                                <useBeanValidation>false</useBeanValidation>
-                                <supportAsync>false</supportAsync>
-                                <jacksonDatabindNullable>false</jacksonDatabindNullable>
-                                <generateExamples>true</generateExamples>
-                                <serdeable>false</serdeable>
-                            </configOptions>
-                            <typeMappings>
-                                <typeMapping>java.util.Date=java.time.Instant</typeMapping>
-                            </typeMappings>
                         </configuration>
                     </execution>
                     <execution>
@@ -288,28 +290,7 @@
                         <configuration>
                             <inputSpec>./api/trusted-issuers-list.yaml</inputSpec>
                             <apiPackage>org.fiware.iam.til.api</apiPackage>
-                            <strictSpec>true</strictSpec>
                             <modelPackage>org.fiware.iam.til.model</modelPackage>
-                            <generateAliasAsModel>true</generateAliasAsModel>
-                            <generateApiTests>true</generateApiTests>
-                            <generatorName>micronaut</generatorName>
-                            <modelNameSuffix>VO</modelNameSuffix>
-                            <output>${project.build.directory}</output>
-                            <configOptions>
-                                <fullJavaUtil>true</fullJavaUtil>
-                                <useOptional>false</useOptional>
-                                <useGenericResponse>true</useGenericResponse>
-                                <useLombokGenerated>true</useLombokGenerated>
-                                <introspected>true</introspected>
-                                <useBeanValidation>false</useBeanValidation>
-                                <supportAsync>false</supportAsync>
-                                <jacksonDatabindNullable>false</jacksonDatabindNullable>
-                                <generateExamples>true</generateExamples>
-                                <serdeable>false</serdeable>
-                            </configOptions>
-                            <typeMappings>
-                                <typeMapping>java.util.Date=java.time.Instant</typeMapping>
-                            </typeMappings>
                         </configuration>
                     </execution>
                 </executions>
@@ -522,7 +503,7 @@
                         <artifactId>jib-maven-plugin</artifactId>
                         <configuration combine.self="override">
                             <from>
-                                <image>registry.access.redhat.com/ubi8/openjdk-21:1.21-1</image>
+                                <image>registry.access.redhat.com/ubi9/openjdk-21-runtime:1.23-6</image>
                             </from>
                             <to>
                                 <image>${image.registry}/${image.repository}/${project.artifactId}</image>

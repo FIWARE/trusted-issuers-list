@@ -62,12 +62,9 @@
         <version.org.mapstruct>1.6.3</version.org.mapstruct>
         <version.org.projectlombok>1.18.42</version.org.projectlombok>
 
-        <!-- logging -->
-        <version.io.kokuwa.micronaut.logging>3.1.0</version.io.kokuwa.micronaut.logging>
-
         <!-- code gen -->
-        <version.org.openapitools.generator-maven-plugin>6.6.0</version.org.openapitools.generator-maven-plugin>
-        <version.io.kokuwa.micronaut.codegen>3.3.1</version.io.kokuwa.micronaut.codegen>
+        <version.org.openapitools.generator-maven-plugin>7.17.0</version.org.openapitools.generator-maven-plugin>
+        <version.io.kokuwa.micronaut.codegen>4.5.0</version.io.kokuwa.micronaut.codegen>
 
         <!-- test -->
         <version.org.mockito.mocktio-all>1.10.19</version.org.mockito.mocktio-all>
@@ -121,6 +118,7 @@
             <groupId>io.micronaut</groupId>
             <artifactId>micronaut-jackson-databind</artifactId>
         </dependency>
+
         <dependency>
             <groupId>io.micronaut</groupId>
             <artifactId>micronaut-http-server-netty</artifactId>
@@ -274,6 +272,7 @@
                                 <supportAsync>false</supportAsync>
                                 <jacksonDatabindNullable>false</jacksonDatabindNullable>
                                 <generateExamples>true</generateExamples>
+                                <serdeable>false</serdeable>
                             </configOptions>
                             <typeMappings>
                                 <typeMapping>java.util.Date=java.time.Instant</typeMapping>
@@ -306,6 +305,7 @@
                                 <supportAsync>false</supportAsync>
                                 <jacksonDatabindNullable>false</jacksonDatabindNullable>
                                 <generateExamples>true</generateExamples>
+                                <serdeable>false</serdeable>
                             </configOptions>
                             <typeMappings>
                                 <typeMapping>java.util.Date=java.time.Instant</typeMapping>

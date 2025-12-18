@@ -59,7 +59,7 @@
         <image.repository>fiware</image.repository>
 
         <!-- lazy dev -->
-        <version.org.mapstruct>1.5.3.Final</version.org.mapstruct>
+        <version.org.mapstruct>1.6.3</version.org.mapstruct>
         <version.org.projectlombok>1.18.38</version.org.projectlombok>
 
         <!-- logging -->
@@ -83,7 +83,6 @@
 
 
     <dependencies>
-
         <!-- lazy dev -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -93,9 +92,7 @@
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
-            <version>
-                ${version.org.mapstruct}
-            </version>
+            <version>${version.org.mapstruct}</version>
         </dependency>
 
         <!-- micronaut -->

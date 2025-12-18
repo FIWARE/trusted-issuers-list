@@ -3,23 +3,21 @@ package org.fiware.iam.rest;
 import io.micronaut.core.annotation.Introspected;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.annotation.Controller;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.fiware.iam.TILMapper;
 import org.fiware.iam.exception.ConflictException;
+import org.fiware.iam.repository.Credential;
+import org.fiware.iam.repository.CredentialRepository;
 import org.fiware.iam.repository.TrustedIssuer;
 import org.fiware.iam.repository.TrustedIssuerRepository;
 import org.fiware.iam.til.api.IssuerApi;
 import org.fiware.iam.til.model.TrustedIssuerVO;
-import org.fiware.iam.repository.Credential;
-import org.fiware.iam.repository.CredentialRepository;
 
-import javax.transaction.Transactional;
 import java.net.URI;
 import java.util.Collection;
 import java.util.Optional;
-
-import io.micronaut.http.annotation.Post;
 
 /**
  * Implementation  of the (proprietary) trusted-list api to manage the issuers.

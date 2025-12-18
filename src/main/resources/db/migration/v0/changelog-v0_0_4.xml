@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="001-modify-credential-dates-to-timestamp" author="fiware">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="credential"/>
+        </preConditions>
+
+        <!-- Modify valid_from column to TIMESTAMP -->
+        <modifyDataType tableName="credential" columnName="valid_from" newDataType="timestamp"/>
+
+        <!-- Modify valid_to column to TIMESTAMP -->
+        <modifyDataType tableName="credential" columnName="valid_to" newDataType="timestamp"/>
+    </changeSet>
+</databaseChangeLog>

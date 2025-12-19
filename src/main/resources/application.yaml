@@ -4,6 +4,11 @@ micronaut:
 
   server:
     port: 8080
+    forward-headers:
+      protocol-header: X-Forwarded-Proto
+      port-header: X-Forwarded-Port
+      host-header: X-Forwarded-Host
+      prefix-header: X-Forwarded-Prefix
 
   metrics:
     enabled: true

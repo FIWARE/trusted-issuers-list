@@ -45,7 +45,7 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
 	private TrustedIssuerVO storedIssuer;
 	private String didToRequest;
 	private Integer pageSize = null;
-	private String lastPage = null;
+	private Integer lastPage = null;
 
 	@BeforeEach
 	public void cleanUp() {
@@ -142,18 +142,19 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
 		assertEquals(HttpStatus.OK, issuersResponse.getStatus(), "The issuers should have been returned");
 		assertIssuersResponse(20, 20, 10, 29, issuersResponse.body());
 
-		issuersResponse = testClient.getIssuersV4(10, "did:elsi:19");
+		issuersResponse = testClient.getIssuersV4(10, 1);
 		assertEquals(HttpStatus.OK, issuersResponse.getStatus(), "The issuers should have been returned");
 		assertIssuersResponse(20, 10, 20, 29, issuersResponse.body());
 	}
 
 	private void assertIssuersResponse(int total, int pageSize, int startIndex, int endIndex,
 			IssuersResponseVO responseVO) {
+
 		assertEquals(total, responseVO.getTotal(), "The correct total should be returned");
 		assertEquals(pageSize, responseVO.getPageSize(), "The correct page size should be returned.");
 		assertEquals(endIndex - startIndex + 1, responseVO.getItems().size(),
 				"All requested items should be included.");
-		assertEquals(String.format("did:elsi:%s", startIndex), responseVO.getItems().get(0).getDid(),
+		assertEquals(String.format("did:elsi:%s", startIndex), responseVO.getItems().getFirst().getDid(),
 				"The correct start item should be returned.");
 		assertEquals(String.format("did:elsi:%s", endIndex), responseVO.getItems().get(endIndex - startIndex).getDid(),
 				"The correct end item should be returned.");
@@ -166,9 +167,9 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
 		getIssuersV4400();
 	}
 
-	@ParameterizedTest
-	@ValueSource(strings = { "no-did", "did:elsi:non-existent" })
-	public void getIssuersV4400(String lastPage) throws Exception {
+    @ParameterizedTest
+    @ValueSource(ints = {-1})
+	public void getIssuersV4400(Integer lastPage) throws Exception {
 		this.lastPage = lastPage;
 		getIssuersV4400();
 	}

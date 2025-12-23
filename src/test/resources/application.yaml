@@ -1,7 +1,9 @@
 micronaut:
   server:
     port: -1
-
+    host: localhost
+    ssl:
+      enabled: false
   metrics:
     enabled: true
     export:

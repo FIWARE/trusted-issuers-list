@@ -9,8 +9,8 @@ on:
       - labeled
       - unlabeled
 env:
-  REGISTRY: quay.io
-  REPOSITORY: fiware
+  REGISTRY: ${{ vars.REGISTRY || 'quay.io' }}
+  REPOSITORY: ${{ vars.REPOSITORY || 'fiware' }}
 
 jobs:
 

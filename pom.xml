@@ -32,7 +32,7 @@
     <properties>
         <jdk.version>21</jdk.version>
         <release.version>21</release.version>
-        <micronaut.version>${parent.version}</micronaut.version>
+        <micronaut.version>${project.parent.version}</micronaut.version>
         <micronaut.data.version>4.14.2</micronaut.data.version>
         <micronaut.validation.version>4.12.0</micronaut.validation.version>
         <!-- project info -->
@@ -74,7 +74,7 @@
         <version.org.jacoco.maven-plugin>0.8.14</version.org.jacoco.maven-plugin>
         <version.coveralls.maven-plugin>5.0.0</version.coveralls.maven-plugin>
         <coveralls.token>myToken</coveralls.token>
-        <jacoco.reportFolder>${project.build.directory}/jacoco/${artifactId}</jacoco.reportFolder>
+        <jacoco.reportFolder>${project.build.directory}/jacoco/${project.artifactId}</jacoco.reportFolder>
         <jacoco.utReportFile>${jacoco.reportFolder}/test.exec</jacoco.utReportFile>
     </properties>
 

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Create trusted_issuer table -->
+    <changeSet id="001-create-trusted-issuer" author="fiware">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="trusted_issuer"/>
+            </not>
+        </preConditions>
+        <createTable tableName="trusted_issuer">
+            <column name="did" type="varchar(255)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Create credential table -->
+    <changeSet id="002-create-credential" author="fiware">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="credential"/>
+            </not>
+        </preConditions>
+        <createTable tableName="credential">
+            <column name="id" type="serial">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="valid_from" type="date"/>
+            <column name="valid_to" type="date"/>
+            <column name="credentials_type" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="trusted_issuer_id" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+                constraintName="fk_trusted_issuer"
+                baseTableName="credential"
+                baseColumnNames="trusted_issuer_id"
+                referencedTableName="trusted_issuer"
+                referencedColumnNames="did"
+                onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Create claim table -->
+    <changeSet id="003-create-claim" author="fiware">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="claim"/>
+            </not>
+        </preConditions>
+        <createTable tableName="claim">
+            <column name="id" type="serial">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="credential_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+                constraintName="fk_credential"
+                baseTableName="claim"
+                baseColumnNames="credential_id"
+                referencedTableName="credential"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Create claim_value table -->
+    <changeSet id="004-create-claim-value" author="fiware">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="claim_value"/>
+            </not>
+        </preConditions>
+        <createTable tableName="claim_value">
+            <column name="id" type="serial">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="value" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="claim_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+                constraintName="fk_claim"
+                baseTableName="claim_value"
+                baseColumnNames="claim_id"
+                referencedTableName="claim"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+    </changeSet>
+
+</databaseChangeLog>

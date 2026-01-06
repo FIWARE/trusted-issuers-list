@@ -4,9 +4,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.micronaut</groupId>
+        <groupId>io.micronaut.platform</groupId>
         <artifactId>micronaut-parent</artifactId>
-        <version>3.9.1</version>
+        <version>4.10.5</version>
     </parent>
 
     <groupId>org.fiware.iam</groupId>
@@ -32,9 +32,9 @@
     <properties>
         <jdk.version>21</jdk.version>
         <release.version>21</release.version>
-        <micronaut.version>3.9.1</micronaut.version>
-        <micronaut.data.version>3.10.0</micronaut.data.version>
-
+        <micronaut.version>${project.parent.version}</micronaut.version>
+        <micronaut.data.version>4.14.2</micronaut.data.version>
+        <micronaut.validation.version>4.12.0</micronaut.validation.version>
         <!-- project info -->
         <project.author.name>Stefan Wiedemann</project.author.name>
         <project.author.email>stefan.wiedemann@fiware.org</project.author.email>
@@ -59,30 +59,27 @@
         <image.repository>fiware</image.repository>
 
         <!-- lazy dev -->
-        <version.org.mapstruct>1.5.3.Final</version.org.mapstruct>
-        <version.org.projectlombok>1.18.38</version.org.projectlombok>
-
-        <!-- logging -->
-        <version.io.kokuwa.micronaut.logging>3.1.0</version.io.kokuwa.micronaut.logging>
+        <version.org.mapstruct>1.6.3</version.org.mapstruct>
+        <version.org.projectlombok>1.18.42</version.org.projectlombok>
 
         <!-- code gen -->
-        <version.org.openapitools.generator-maven-plugin>6.6.0</version.org.openapitools.generator-maven-plugin>
-        <version.io.kokuwa.micronaut.codegen>3.3.1</version.io.kokuwa.micronaut.codegen>
+        <version.org.openapitools.generator-maven-plugin>7.17.0</version.org.openapitools.generator-maven-plugin>
+        <version.io.kokuwa.micronaut.codegen>4.5.0</version.io.kokuwa.micronaut.codegen>
 
         <!-- test -->
-        <version.org.mockito.mocktio-all>1.10.19</version.org.mockito.mocktio-all>
+        <version.org.mockito.mockito-core>5.21.0</version.org.mockito.mockito-core>
 
         <!-- build -->
-        <version.org.codehaus.mojo.build-helper-maven-plugin>3.4.0</version.org.codehaus.mojo.build-helper-maven-plugin>
-        <version.org.jacoco.maven-plugin>0.8.12</version.org.jacoco.maven-plugin>
-        <version.org.eluder.coveralls.maven-plugin>4.3.0</version.org.eluder.coveralls.maven-plugin>
+        <version.org.codehaus.mojo.build-helper-maven-plugin>3.6.1</version.org.codehaus.mojo.build-helper-maven-plugin>
+        <version.org.jacoco.maven-plugin>0.8.14</version.org.jacoco.maven-plugin>
+        <version.coveralls.maven-plugin>5.0.0</version.coveralls.maven-plugin>
         <coveralls.token>myToken</coveralls.token>
-        <jacoco.reportFolder>${project.build.directory}/jacoco/${artifactId}</jacoco.reportFolder>
+        <jacoco.reportFolder>${project.build.directory}/jacoco/${project.artifactId}</jacoco.reportFolder>
         <jacoco.utReportFile>${jacoco.reportFolder}/test.exec</jacoco.utReportFile>
     </properties>
 
-    <dependencies>
 
+    <dependencies>
         <!-- lazy dev -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -92,9 +89,7 @@
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
-            <version>
-                ${version.org.mapstruct}
-            </version>
+            <version>${version.org.mapstruct}</version>
         </dependency>
 
         <!-- micronaut -->
@@ -108,32 +103,44 @@
             <artifactId>micronaut-runtime</artifactId>
             <scope>compile</scope>
         </dependency>
+
         <dependency>
             <groupId>io.micronaut</groupId>
             <artifactId>micronaut-inject</artifactId>
             <scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>io.micronaut</groupId>
+            <groupId>io.micronaut.validation</groupId>
             <artifactId>micronaut-validation</artifactId>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>io.micronaut</groupId>
+            <artifactId>micronaut-jackson-databind</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.micronaut</groupId>
             <artifactId>micronaut-http-server-netty</artifactId>
             <scope>compile</scope>
         </dependency>
+
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-core</artifactId>
         </dependency>
+        <!-- required for config micronaut > 4.x -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
+
+        <!-- db -->
         <dependency>
             <groupId>io.micronaut.data</groupId>
             <artifactId>micronaut-data-processor</artifactId>
             <scope>provided</scope>
         </dependency>
-
-        <!-- db -->
         <dependency>
             <groupId>io.micronaut.data</groupId>
             <artifactId>micronaut-data-jdbc</artifactId>
@@ -165,8 +172,8 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
         <dependency>
@@ -222,8 +229,8 @@
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
-            <artifactId>mockito-all</artifactId>
-            <version>${version.org.mockito.mocktio-all}</version>
+            <artifactId>mockito-core</artifactId>
+            <version>${version.org.mockito.mockito-core}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -241,6 +248,29 @@
                 <groupId>org.openapitools</groupId>
                 <artifactId>openapi-generator-maven-plugin</artifactId>
                 <version>${version.org.openapitools.generator-maven-plugin}</version>
+                <configuration>
+                    <strictSpec>true</strictSpec>
+                    <generateAliasAsModel>true</generateAliasAsModel>
+                    <generateApiTests>true</generateApiTests>
+                    <generatorName>micronaut</generatorName>
+                    <modelNameSuffix>VO</modelNameSuffix>
+                    <output>${project.build.directory}</output>
+                    <configOptions>
+                        <fullJavaUtil>true</fullJavaUtil>
+                        <useOptional>false</useOptional>
+                        <useGenericResponse>true</useGenericResponse>
+                        <useLombokGenerated>true</useLombokGenerated>
+                        <introspected>true</introspected>
+                        <useBeanValidation>false</useBeanValidation>
+                        <supportAsync>false</supportAsync>
+                        <jacksonDatabindNullable>false</jacksonDatabindNullable>
+                        <generateExamples>true</generateExamples>
+                        <serdeable>false</serdeable>
+                    </configOptions>
+                    <typeMappings>
+                        <typeMapping>java.util.Date=java.time.Instant</typeMapping>
+                    </typeMappings>
+                </configuration>
                 <executions>
                     <execution>
                         <id>tir</id>
@@ -251,27 +281,7 @@
                         <configuration>
                             <inputSpec>./api/trusted-issuers-registry.yaml</inputSpec>
                             <apiPackage>org.fiware.iam.tir.api</apiPackage>
-                            <strictSpec>true</strictSpec>
                             <modelPackage>org.fiware.iam.tir.model</modelPackage>
-                            <generateAliasAsModel>true</generateAliasAsModel>
-                            <generateApiTests>true</generateApiTests>
-                            <generatorName>micronaut</generatorName>
-                            <modelNameSuffix>VO</modelNameSuffix>
-                            <output>${project.build.directory}</output>
-                            <configOptions>
-                                <fullJavaUtil>true</fullJavaUtil>
-                                <useOptional>false</useOptional>
-                                <useGenericResponse>true</useGenericResponse>
-                                <useLombokGenerated>true</useLombokGenerated>
-                                <introspected>true</introspected>
-                                <useBeanValidation>false</useBeanValidation>
-                                <supportAsync>false</supportAsync>
-                                <jacksonDatabindNullable>false</jacksonDatabindNullable>
-                                <generateExamples>true</generateExamples>
-                            </configOptions>
-                            <typeMappings>
-                                <typeMapping>java.util.Date=java.time.Instant</typeMapping>
-                            </typeMappings>
                         </configuration>
                     </execution>
                     <execution>
@@ -283,27 +293,7 @@
                         <configuration>
                             <inputSpec>./api/trusted-issuers-list.yaml</inputSpec>
                             <apiPackage>org.fiware.iam.til.api</apiPackage>
-                            <strictSpec>true</strictSpec>
                             <modelPackage>org.fiware.iam.til.model</modelPackage>
-                            <generateAliasAsModel>true</generateAliasAsModel>
-                            <generateApiTests>true</generateApiTests>
-                            <generatorName>micronaut</generatorName>
-                            <modelNameSuffix>VO</modelNameSuffix>
-                            <output>${project.build.directory}</output>
-                            <configOptions>
-                                <fullJavaUtil>true</fullJavaUtil>
-                                <useOptional>false</useOptional>
-                                <useGenericResponse>true</useGenericResponse>
-                                <useLombokGenerated>true</useLombokGenerated>
-                                <introspected>true</introspected>
-                                <useBeanValidation>false</useBeanValidation>
-                                <supportAsync>false</supportAsync>
-                                <jacksonDatabindNullable>false</jacksonDatabindNullable>
-                                <generateExamples>true</generateExamples>
-                            </configOptions>
-                            <typeMappings>
-                                <typeMapping>java.util.Date=java.time.Instant</typeMapping>
-                            </typeMappings>
                         </configuration>
                     </execution>
                 </executions>
@@ -348,7 +338,7 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>io.micronaut.build</groupId>
+                <groupId>io.micronaut.maven</groupId>
                 <artifactId>micronaut-maven-plugin</artifactId>
             </plugin>
             <plugin>
@@ -409,20 +399,12 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.eluder.coveralls</groupId>
+                <groupId>com.github.hazendaz.maven</groupId>
                 <artifactId>coveralls-maven-plugin</artifactId>
-                <version>${version.org.eluder.coveralls.maven-plugin}</version>
+                <version>${version.coveralls.maven-plugin}</version>
                 <configuration>
                     <repoToken>${coveralls.token}</repoToken>
                 </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>javax.xml.bind</groupId>
-                        <artifactId>jaxb-api</artifactId>
-                        <version>2.3.1</version>
-                    </dependency>
-                </dependencies>
-
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -430,7 +412,7 @@
                 <configuration>
                     <!-- Uncomment to enable incremental compilation -->
                     <!-- <useIncrementalCompilation>false</useIncrementalCompilation> -->
-                    <annotationProcessorPaths>
+                    <annotationProcessorPaths combine.self="override">
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
@@ -462,9 +444,9 @@
                             <version>${micronaut.version}</version>
                         </path>
                         <path>
-                            <groupId>io.micronaut</groupId>
+                            <groupId>io.micronaut.validation</groupId>
                             <artifactId>micronaut-validation</artifactId>
-                            <version>${micronaut.version}</version>
+                            <version>${micronaut.validation.version}</version>
                         </path>
                     </annotationProcessorPaths>
                     <compilerArgs>
@@ -472,59 +454,6 @@
                         <arg>-Amicronaut.processing.module=trusted-issuers-list</arg>
                     </compilerArgs>
                 </configuration>
-                <executions>
-                    <execution>
-                        <id>test-compile</id>
-                        <goals>
-                            <goal>testCompile</goal>
-                        </goals>
-                        <configuration>
-                            <!-- Uncomment to enable incremental compilation -->
-                            <!-- <useIncrementalCompilation>false</useIncrementalCompilation> -->
-                            <annotationProcessorPaths>
-                                <path>
-                                    <groupId>org.projectlombok</groupId>
-                                    <artifactId>lombok</artifactId>
-                                    <version>${version.org.projectlombok}</version>
-                                </path>
-                                <path>
-                                    <groupId>org.mapstruct</groupId>
-                                    <artifactId>mapstruct-processor</artifactId>
-                                    <version>${version.org.mapstruct}</version>
-                                </path>
-                                <path>
-                                    <groupId>io.micronaut</groupId>
-                                    <artifactId>micronaut-inject-java</artifactId>
-                                    <version>${micronaut.version}</version>
-                                </path>
-                                <path>
-                                    <groupId>io.micronaut.data</groupId>
-                                    <artifactId>micronaut-data-processor</artifactId>
-                                    <version>${micronaut.data.version}</version>
-                                </path>
-                                <path>
-                                    <groupId>io.micronaut</groupId>
-                                    <artifactId>micronaut-graal</artifactId>
-                                    <version>${micronaut.version}</version>
-                                </path>
-                                <path>
-                                    <groupId>io.micronaut</groupId>
-                                    <artifactId>micronaut-http-validation</artifactId>
-                                    <version>${micronaut.version}</version>
-                                </path>
-                                <path>
-                                    <groupId>io.micronaut</groupId>
-                                    <artifactId>micronaut-validation</artifactId>
-                                    <version>${micronaut.version}</version>
-                                </path>
-                            </annotationProcessorPaths>
-                            <compilerArgs>
-                                <arg>-Amicronaut.processing.group=org.fiware.iam</arg>
-                                <arg>-Amicronaut.processing.module=trusted-issuers-list</arg>
-                            </compilerArgs>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -577,7 +506,17 @@
                         <artifactId>jib-maven-plugin</artifactId>
                         <configuration combine.self="override">
                             <from>
-                                <image>registry.access.redhat.com/ubi8/openjdk-21:1.21-1</image>
+                                <image>registry.access.redhat.com/ubi9/openjdk-21-runtime:1.23-6</image>
+                                <platforms>
+                                    <platform>
+                                        <architecture>amd64</architecture>
+                                        <os>linux</os>
+                                    </platform>
+                                    <platform>
+                                        <architecture>arm64</architecture>
+                                        <os>linux</os>
+                                    </platform>
+                                </platforms>
                             </from>
                             <to>
                                 <image>${image.registry}/${image.repository}/${project.artifactId}</image>

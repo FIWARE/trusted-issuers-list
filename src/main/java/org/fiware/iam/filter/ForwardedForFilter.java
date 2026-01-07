@@ -6,78 +6,93 @@ import io.micronaut.http.MutableHttpResponse;
 import io.micronaut.http.annotation.Filter;
 import io.micronaut.http.filter.HttpServerFilter;
 import io.micronaut.http.filter.ServerFilterChain;
-import io.micronaut.http.server.HttpServerConfiguration;
-import io.micronaut.http.ssl.ServerSslConfiguration;
-import org.fiware.iam.configuration.ForwardedForConfig;
+import io.micronaut.http.uri.UriBuilder;
 import org.reactivestreams.Publisher;
 
 import java.net.URI;
 
+/**
+ * HTTP server filter that normalizes and exposes forwarding information for incoming requests.
+ *
+ * <p>
+ * This filter reads the RFC 7239 Forwarded header as well as legacy X-Forwarded-* headers
+ * (such as X-Forwarded-For, X-Forwarded-Proto, X-Forwarded-Host, X-Forwarded-Prefix) from
+ * each request. It parses these headers to determine the original client IP, protocol,
+ * host, port, and any path prefix applied by upstream proxies or gateways.
+ * </p>
+ *
+ * <p>
+ * The filter then computes the full original request URL and stores it, along with the parsed
+ * forwarding details, as attributes in the request:
+ * <ul>
+ *     <li>{@link #REQ_ATTR}: the reconstructed request URI</li>
+ *     <li>{@link #FORWARD_INFO_ATTR}: the {@link ForwardedInfo} object containing all parsed forwarding information</li>
+ * </ul>
+ * </p>
+ *
+ * <p>
+ * Downstream controllers and filters can use these attributes to correctly generate
+ * absolute URLs, redirects, or logs that reflect the original client-facing request
+ * even when behind reverse proxies.
+ * </p>
+ */
 @Filter(Filter.MATCH_ALL_PATTERN)
 public class ForwardedForFilter implements HttpServerFilter, Ordered {
 
-    public static final String HOST_ATTR = "server-host";
-    public static final String PORT_ATTR = "server-port";
-    public static final String PROTO_ATTR = "server-proto";
-    public static final String PREFIX_ATTR = "server-prefix";
     public static final String REQ_ATTR = "server-req";
+    public static final String FORWARD_INFO_ATTR = "forwarded-info";
 
-    private static final String DEFAULT_HOST = "localhost";
     private static final String HTTP_PROTOCOL = "http";
     private static final String HTTPS_PROTOCOL = "https";
-    private static final String DEFAULT_HTTP_PORT = "80";
-    private static final String DEFAULT_HTTPS_PORT = "443";
 
-    private final ForwardedForConfig config;
-    private final int serverPort;
-    private final String defaultServerProtocol;
-    private final String defaultHost;
-    public ForwardedForFilter(ForwardedForConfig config, HttpServerConfiguration serverConfiguration,
-                              ServerSslConfiguration sslConfig) {
-        this.config = config;
-        this.serverPort = serverConfiguration.getPort().orElse(HttpServerConfiguration.DEFAULT_PORT);
-        this.defaultServerProtocol = sslConfig.isEnabled() ? HTTPS_PROTOCOL : HTTP_PROTOCOL;
-        this.defaultHost = serverConfiguration.getHost().orElse(DEFAULT_HOST);
+    private final ForwardHeaderParser forwardHeaderParser;
+
+    public ForwardedForFilter(ForwardHeaderParser forwardHeaderParser) {
+
+        this.forwardHeaderParser = forwardHeaderParser;
     }
 
     @Override
     public Publisher<MutableHttpResponse<?>> doFilter(HttpRequest<?> request, ServerFilterChain chain) {
 
-        String hostHeader = config != null ? getHeaderValue(request, config.getHostHeader(), defaultHost) : defaultHost;
-        String portHeader = config != null ? getHeaderValue(request, config.getPortHeader(), String.valueOf(serverPort)): String.valueOf(serverPort);
-        String protoHeader = config != null ? getHeaderValue(request, config.getProtocolHeader(), defaultServerProtocol): defaultServerProtocol;
-        if (portHeader.equals("-1")) {
-            portHeader = String.valueOf(request.getServerAddress().getPort());
-        }
-        String prefixHeader = config != null ? getHeaderValue(request, config.getPrefixHeader(), ""): "";
+        ForwardedInfo forwardedInfo = forwardHeaderParser.parse(request);
 
-        String portPart = "";
-        if (!(HTTP_PROTOCOL.equalsIgnoreCase(protoHeader) && DEFAULT_HTTP_PORT.equals(portHeader))
-                && !(HTTPS_PROTOCOL.equalsIgnoreCase(protoHeader) && DEFAULT_HTTPS_PORT.equals(portHeader))) {
-            portPart = ":" + portHeader;
-        }
+        URI reqUrl = getReqUrl(forwardedInfo);
 
-        String reqUrl = String.format("%s://%s%s%s", protoHeader, hostHeader, portPart, prefixHeader);
-
-        HttpRequest<?> modifiedRequest = request.setAttribute(HOST_ATTR, hostHeader)
-                .setAttribute(PORT_ATTR, portHeader)
-                .setAttribute(PROTO_ATTR, protoHeader)
-                .setAttribute(PREFIX_ATTR, prefixHeader)
-                .setAttribute(REQ_ATTR, URI.create(reqUrl));
+        HttpRequest<?> modifiedRequest = request
+                .setAttribute(REQ_ATTR, reqUrl)
+                .setAttribute(FORWARD_INFO_ATTR, forwardedInfo);
 
         return chain.proceed(modifiedRequest);
     }
 
-    private String getHeaderValue(HttpRequest<?> request, String headerName, String defaultValue) {
+    private URI getReqUrl(ForwardedInfo forwardedInfo) {
 
-        if (headerName == null) {
-            return defaultValue;
+
+        String protocol = forwardedInfo.getForwardedProto();
+        String host = forwardedInfo.getForwardedHost();
+        int port = forwardedInfo.getForwardedPort();
+        String prefix = forwardedInfo.getForwardedPrefix();
+
+        // Ignore default ports
+        Integer portToUse = null;
+        if (!(HTTP_PROTOCOL.equalsIgnoreCase(protocol) && port == ForwardHeaderParser.DEFAULT_HTTP_PORT)
+                && !(HTTPS_PROTOCOL.equalsIgnoreCase(protocol) && port == ForwardHeaderParser.DEFAULT_HTTPS_PORT)) {
+            portToUse = port;
         }
-        return request.getHeaders().get(headerName, String.class, defaultValue);
+
+        UriBuilder builder = UriBuilder.of(protocol + "://" + host).path(prefix);
+
+        if (portToUse != null) {
+            builder.port(portToUse);
+        }
+
+        return builder.build();
     }
 
     @Override
     public int getOrder() {
+
         return Ordered.HIGHEST_PRECEDENCE;
     }
 }

@@ -35,6 +35,10 @@ import java.util.Optional;
 public class TrustedIssuerRegistryController implements TirApi {
 
 	private static final int DEFAULT_PAGE_SIZE = 10;
+    private static final String ROOT_PATH = "/";
+    private static final String AFTER_PARAM = "page[after]";
+    private static final String SIZE_PARAM = "page[size]";
+    private static final String DEFAULT_SORT = "did";
 
 	private final TIRMapper trustedIssuerMapper;
 	private final TrustedIssuerRepository trustedIssuerRepository;
@@ -68,7 +72,7 @@ public class TrustedIssuerRegistryController implements TirApi {
 			throw new IllegalArgumentException("The requested page size is not supported.");
 		}
 
-		Sort didSort = Sort.unsorted().order("did");
+		Sort didSort = Sort.unsorted().order(DEFAULT_SORT);
         Pageable pagination = Pageable.from( page, pageSize, didSort);
 		Page<TrustedIssuer> result = trustedIssuerRepository.findAll(pagination);
 
@@ -106,10 +110,10 @@ public class TrustedIssuerRegistryController implements TirApi {
         Optional<HttpRequest<Object>> httpRequest = ServerRequestContext.currentRequest();
         if (httpRequest.isPresent()) {
             HttpRequest<?> request = httpRequest.get();
-            URI baseUri = (URI) request.getAttribute(ForwardedForFilter.REQ_ATTR).orElse(URI.create("/"));
+            URI baseUri = (URI) request.getAttribute(ForwardedForFilter.REQ_ATTR).orElse(URI.create(ROOT_PATH));
             return UriBuilder.of(baseUri).replacePath(request.getPath());
         }
-        return UriBuilder.of("/");
+        return UriBuilder.of(ROOT_PATH);
     }
 
     private LinksVO getLinks(Page<?> page) {
@@ -119,22 +123,22 @@ public class TrustedIssuerRegistryController implements TirApi {
 
         if (page.hasPrevious()) {
             links.prev(UriBuilder.of(baseUri)
-                    .queryParam("page[after]", page.getPageable().previous().getNumber())
-                    .queryParam("page[size]", page.getSize()).build());
+                    .queryParam(AFTER_PARAM, page.getPageable().previous().getNumber())
+                    .queryParam(SIZE_PARAM, page.getSize()).build());
 
         }
         if (page.hasNext()) {
             links.next(UriBuilder.of(baseUri)
-                    .queryParam("page[after]", page.getPageable().next().getNumber())
-                    .queryParam("page[size]", pageSize).build());
+                    .queryParam(AFTER_PARAM, page.getPageable().next().getNumber())
+                    .queryParam(SIZE_PARAM, pageSize).build());
         }
 
         links.first(UriBuilder.of(baseUri)
-                .queryParam("page[after]", 0)
-                .queryParam("page[size]", pageSize).build());
+                .queryParam(AFTER_PARAM, 0)
+                .queryParam(SIZE_PARAM, pageSize).build());
         links.last(UriBuilder.of(baseUri)
-                .queryParam("page[after]", page.getTotalPages() - 1)
-                .queryParam("page[size]", pageSize).build());
+                .queryParam(AFTER_PARAM, page.getTotalPages() - 1)
+                .queryParam(SIZE_PARAM, pageSize).build());
         return links;
     }
 }

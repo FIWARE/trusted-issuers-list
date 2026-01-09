@@ -58,7 +58,7 @@ The following table concentrates on the most important configuration parameters:
 ### Database
 
 Trusted-Issuers-List requires an SQL database. It currently supports MySql-compatible DBs and H2 (as an In-Memory DB for dev/test purposes) and PostgreSQL.
-Migrations are applied via [flyway](https://flywaydb.org/), see the [migration-scripts](./src/main/resources/db/migration) for the schema.
+Migrations are applied via [liquibase](https://www.liquibase.com/), see the [migration-scripts](./src/main/resources/db/migration).
 
 
 By default, the system is configured to use MySQL. To run it with PostgreSQL, you should update the following configuration:
@@ -72,12 +72,8 @@ datasources:
     username: superuser
     password: superpassword
     dialect: POSTGRES
-# Update migration scripts location
-flyway:
-  datasources:
-    default:
-      locations: classpath:db/migration/postgresql
 ```
+
 ## Usage
 
 2 APIs are provided by the service:

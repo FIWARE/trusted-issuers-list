@@ -1,2 +1,0 @@
-ALTER TABLE `credential` MODIFY COLUMN `valid_from` TIMESTAMP;
-ALTER TABLE `credential` MODIFY COLUMN `valid_to` TIMESTAMP;

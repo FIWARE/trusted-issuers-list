@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+
+    <!-- Modify trusted_issuer.did column -->
+    <changeSet id="001-modify-trusted-issuer-did" author="fiware">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="trusted_issuer"/>
+        </preConditions>
+        <modifyDataType tableName="trusted_issuer" columnName="did" newDataType="varchar(768)"/>
+        <addNotNullConstraint tableName="trusted_issuer" columnName="did" columnDataType="varchar(768)"/>
+    </changeSet>
+
+    <!-- Modify credential.trusted_issuer_id column -->
+    <changeSet id="002-modify-credential-trusted-issuer-id" author="fiware">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="credential"/>
+        </preConditions>
+        <modifyDataType tableName="credential" columnName="trusted_issuer_id" newDataType="varchar(768)"/>
+        <addNotNullConstraint tableName="credential" columnName="trusted_issuer_id" columnDataType="varchar(768)"/>
+    </changeSet>
+
+</databaseChangeLog>

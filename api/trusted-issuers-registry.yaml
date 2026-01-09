@@ -85,8 +85,10 @@ components:
       in: query
       required: false
       schema:
-        type: string
-        example: did:key:z6MksU6tMfbaDzvaRe5oFE4eZTVTV4HJM4fmQWWGsDGQVsEr
+        type: integer
+        minimum: 0
+        default: 0
+        example: 0
   schemas:
     IssuerEntry:
       type: object

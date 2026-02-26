@@ -1,6 +1,8 @@
 package org.fiware.iam.configuration;
 
+import io.micronaut.context.annotation.ConfigurationInject;
 import io.micronaut.context.annotation.ConfigurationProperties;
+import io.micronaut.core.annotation.Nullable;
 import lombok.Getter;
 
 /**
@@ -12,7 +14,6 @@ import lombok.Getter;
 @ConfigurationProperties("micronaut.server.forward-headers")
 @Getter
 public class ForwardedForConfig {
-
 
     /**
      * The name of the header that carries the protocol.
@@ -43,4 +44,19 @@ public class ForwardedForConfig {
      * Default: "X-Forwarded-For".
      */
     private String forHeader;
+
+    @ConfigurationInject
+    public ForwardedForConfig(
+            @Nullable String protocolHeader,
+            @Nullable String portHeader,
+            @Nullable String hostHeader,
+            @Nullable String prefixHeader,
+            @Nullable String forHeader) {
+
+        this.protocolHeader = protocolHeader;
+        this.portHeader = portHeader;
+        this.hostHeader = hostHeader;
+        this.prefixHeader = prefixHeader;
+        this.forHeader = forHeader;
+    }
 }

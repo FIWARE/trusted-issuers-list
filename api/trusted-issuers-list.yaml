@@ -8,6 +8,22 @@ tags:
   - name: issuer
 paths:
   /issuer:
+    get:
+      tags:
+        - issuer
+      operationId: getIssuers
+      summary: Get the DIDs of all trusted issuers
+      description: Returns a paginated list of DIDs of all trusted issuers.
+      parameters:
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: Successfully retrieved the list of issuer DIDs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustedIssuersListResponse'
     post:
       tags:
         - issuer
@@ -110,7 +126,49 @@ components:
       schema:
         type: string
         example: did:elsi:happypets
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: Maximum number of items to return per page.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+        example: 10
+    Page:
+      name: page
+      in: query
+      required: false
+      description: The page number to retrieve (zero-based).
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+        example: 0
   schemas:
+    TrustedIssuersListResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of trusted issuers.
+          example: 42
+        pageSize:
+          type: integer
+          description: Number of items per page.
+          example: 10
+        page:
+          type: integer
+          description: Current page number (zero-based).
+          example: 0
+        items:
+          type: array
+          description: List of issuer DIDs on this page.
+          items:
+            type: string
+            example: did:elsi:happypets
     TimeRange:
       type: object
       properties:

@@ -16,6 +16,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -145,6 +146,67 @@ public class TrustedIssuersListControllerTest
     public void getIssuer404() throws Exception {
         HttpResponse<?> getResponse = testClient.getIssuer("notExistingDid");
         assertEquals(HttpStatus.NOT_FOUND, getResponse.getStatus(), "No issuer should have been found");
+    }
+
+    @Test
+    @Override
+    public void getIssuers200() throws Exception {
+        List<TrustedIssuerVO> issuers = new ArrayList<>();
+        for (int i = 10; i < 30; i++) {
+            TrustedIssuerVO issuer = TrustedIssuerVOTestExample.build()
+                    .did(String.format("did:elsi:%s", i));
+            testClient.createTrustedIssuer(issuer);
+            issuers.add(issuer);
+        }
+
+        // default pagination: page 0, size 10
+        HttpResponse<TrustedIssuersListResponseVO> response = testClient.getIssuers(null, null);
+        assertEquals(HttpStatus.OK, response.getStatus(), "The issuers should have been returned.");
+        TrustedIssuersListResponseVO body = response.body();
+        assertEquals(20, body.getTotal(), "Total count should include all issuers.");
+        assertEquals(10, body.getPageSize(), "Default page size should be 10.");
+        assertEquals(0, body.getPage(), "Default page should be 0.");
+        assertEquals(10, body.getItems().size(), "First page should contain 10 items.");
+        assertEquals("did:elsi:10", body.getItems().get(0), "Items should be sorted by DID.");
+
+        // custom page size
+        response = testClient.getIssuers(20, null);
+        assertEquals(HttpStatus.OK, response.getStatus(), "The issuers should have been returned.");
+        body = response.body();
+        assertEquals(20, body.getTotal(), "Total count should include all issuers.");
+        assertEquals(20, body.getPageSize(), "Requested page size should be applied.");
+        assertEquals(20, body.getItems().size(), "All issuers should be returned in one page.");
+
+        // second page
+        response = testClient.getIssuers(10, 1);
+        assertEquals(HttpStatus.OK, response.getStatus(), "The issuers should have been returned.");
+        body = response.body();
+        assertEquals(20, body.getTotal(), "Total count should include all issuers.");
+        assertEquals(10, body.getPageSize(), "Page size should be 10.");
+        assertEquals(1, body.getPage(), "Page number should be 1.");
+        assertEquals("did:elsi:20", body.getItems().get(0),
+                "Second page should start after first page items.");
+    }
+
+    @Test
+    public void getIssuersEmpty200() throws Exception {
+        HttpResponse<TrustedIssuersListResponseVO> response = testClient.getIssuers(null, null);
+        assertEquals(HttpStatus.OK, response.getStatus(), "An empty list should still return 200.");
+        TrustedIssuersListResponseVO body = response.body();
+        assertEquals(0, body.getTotal(), "Total should be 0 for an empty list.");
+        assertTrue(body.getItems().isEmpty(), "Items should be empty.");
+    }
+
+    @Test
+    public void getIssuersInvalidPageSize400() throws Exception {
+        try {
+            testClient.getIssuers(0, null);
+        } catch (HttpClientResponseException e) {
+            assertEquals(HttpStatus.BAD_REQUEST, e.getStatus(),
+                    "A page size below the minimum should be rejected.");
+            return;
+        }
+        fail("A page size of 0 should be rejected.");
     }
 
     @Override

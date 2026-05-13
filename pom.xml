@@ -296,6 +296,18 @@
                             <modelPackage>org.fiware.iam.til.model</modelPackage>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>tir-v5</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>./api/trusted-issuers-registry-v5.yaml</inputSpec>
+                            <apiPackage>org.fiware.iam.tir.v5.api</apiPackage>
+                            <modelPackage>org.fiware.iam.tir.v5.model</modelPackage>
+                        </configuration>
+                    </execution>
                 </executions>
                 <dependencies>
                     <dependency>

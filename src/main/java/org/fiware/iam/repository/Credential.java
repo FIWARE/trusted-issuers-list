@@ -42,6 +42,25 @@ public class Credential {
 
 	private String credentialsType;
 
+	/**
+	 * The type of issuer for this credential (e.g., TI, TAO, RootTAO).
+	 * Defaults to "Undefined" for backward compatibility with v4.
+	 */
+	@Nullable
+	private String issuerType;
+
+	/**
+	 * DID of the Trusted Accreditation Organization that accredited this issuer.
+	 */
+	@Nullable
+	private String tao;
+
+	/**
+	 * DID of the Root Trusted Accreditation Organization in the trust chain.
+	 */
+	@Nullable
+	private String rootTao;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "trusted_issuer_id")
 	private TrustedIssuer trustedIssuer;

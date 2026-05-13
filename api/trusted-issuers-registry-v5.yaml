@@ -50,7 +50,10 @@ paths:
             application/json:
               schema:
                 type: object
-                description: IssuerLatest (default) or IssuerDeprecated (when version=deprecated)
+                description: >
+                  Polymorphic response. When version=latest (default), returns
+                  {did, attributes (URI), hasAttributes}. When version=deprecated,
+                  returns {did, attributes (inline array)}.
         '400':
           description: Bad Request
           content:
@@ -287,45 +290,6 @@ components:
       required:
         - did
         - href
-    IssuerLatest:
-      type: object
-      description: Issuer response in latest format with link-based attributes.
-      properties:
-        did:
-          description: Issuer's DID
-          type: string
-          format: did
-          example: did:key:z6MksU6tMfbaDzvaRe5oFE4eZTVTV4HJM4fmQWWGsDGQVsEr
-        attributes:
-          description: Link to the issuer's attributes
-          type: string
-          format: uri
-          example: http://my-registry.org/v5/issuers/did:key:z6MksU6tMfbaDzvaRe5oFE4eZTVTV4HJM4fmQWWGsDGQVsEr/attributes
-        hasAttributes:
-          description: Whether the issuer has any attributes
-          type: boolean
-          example: true
-      required:
-        - did
-        - attributes
-        - hasAttributes
-    IssuerDeprecated:
-      type: object
-      description: Issuer response in deprecated format with inline attributes.
-      properties:
-        did:
-          description: Issuer's DID
-          type: string
-          format: did
-          example: did:key:z6MksU6tMfbaDzvaRe5oFE4eZTVTV4HJM4fmQWWGsDGQVsEr
-        attributes:
-          description: Inline attributes of the issuer
-          type: array
-          items:
-            $ref: '#/components/schemas/Attribute'
-      required:
-        - did
-        - attributes
     AttributesResponse:
       type: object
       description: Paginated list of issuer attributes.

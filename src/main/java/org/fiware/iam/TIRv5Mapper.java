@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
  * and mapping of v5-specific fields ({@code issuerType}, {@code tao}, {@code rootTao}).
  *
  * @author <a href="https://github.com/wistefan">Stefan Wiedemann</a>
- **/
+ */
 @Mapper(componentModel = "jsr330")
 public interface TIRv5Mapper {
 

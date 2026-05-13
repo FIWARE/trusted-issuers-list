@@ -1,0 +1,120 @@
+name: Author Tag Check
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  check-author-tags:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for missing @author tags
+        id: check
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          CHANGED_JAVA_FILES=$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" -- '*.java' \
+            | grep -v '^target/' || true)
+
+          if [ -z "$CHANGED_JAVA_FILES" ]; then
+            echo "missing=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          MISSING_FILES=""
+          while IFS= read -r file; do
+            if [ ! -f "$file" ]; then
+              continue
+            fi
+            if ! grep -q '@author' "$file"; then
+              MISSING_FILES="${MISSING_FILES}${file}"$'\n'
+            fi
+          done <<< "$CHANGED_JAVA_FILES"
+
+          EOF_MARKER=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          {
+            echo "missing<<${EOF_MARKER}"
+            echo -n "$MISSING_FILES"
+            echo "${EOF_MARKER}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR
+        if: steps.check.outputs.missing != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const missingFiles = `${{ steps.check.outputs.missing }}`.trim().split('\n').filter(Boolean);
+            const fileList = missingFiles.map(f => `- \`${f}\``).join('\n');
+            const marker = '<!-- author-tag-check -->';
+            const body = [
+              marker,
+              '### Missing `@author` tags',
+              '',
+              'The following Java files changed in this PR do not contain an `@author` tag:',
+              '',
+              fileList,
+              '',
+              'If you are a human contributor, please consider adding your `@author` tag to the class-level Javadoc, e.g.:',
+              '',
+              '```java',
+              '/**',
+              ' * Class description.',
+              ' *',
+              ' * @author Your Name',
+              ' */',
+              '```',
+              '',
+              '*This is an informational check and does not block the PR.*',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Remove outdated comment
+        if: steps.check.outputs.missing == ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- author-tag-check -->';
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+              });
+            }

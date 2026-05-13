@@ -28,7 +28,6 @@ import org.fiware.iam.tir.v5.model.RevisionEntryVO;
 import org.fiware.iam.tir.v5.model.RevisionsResponseVO;
 
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;

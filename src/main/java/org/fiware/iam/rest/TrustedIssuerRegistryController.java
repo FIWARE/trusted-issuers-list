@@ -1,3 +1,19 @@
+/*
+ * Copyright 2023 FIWARE Foundation e.V. and/or its affiliates
+ * and other contributors as indicated by the @author tags.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.fiware.iam.rest;
 
 import io.micronaut.core.annotation.Nullable;
@@ -9,6 +25,9 @@ import io.micronaut.http.HttpResponse;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.context.ServerRequestContext;
 import io.micronaut.http.uri.UriBuilder;
+import java.net.URI;
+import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.fiware.iam.TIRMapper;
@@ -21,124 +40,121 @@ import org.fiware.iam.tir.model.IssuerVO;
 import org.fiware.iam.tir.model.IssuersResponseVO;
 import org.fiware.iam.tir.model.LinksVO;
 
-import java.net.URI;
-import java.util.List;
-import java.util.Optional;
-
 /**
- * Implementation of the (EBSI-compatible) trusted issuers registry
- * {@see https://api-pilot.ebsi.eu/docs/apis/trusted-issuers-registry/v4#/}
+ * Implementation of the (EBSI-compatible) trusted issuers registry {@see
+ * https://api-pilot.ebsi.eu/docs/apis/trusted-issuers-registry/v4#/}
  */
 @Slf4j
 @Controller("${general.basepath:/}")
 @RequiredArgsConstructor
 public class TrustedIssuerRegistryController implements TirApi {
 
-	private static final int DEFAULT_PAGE_SIZE = 10;
-    private static final String ROOT_PATH = "/";
-    private static final String AFTER_PARAM = "page[after]";
-    private static final String SIZE_PARAM = "page[size]";
-    private static final String DEFAULT_SORT = "did";
+  private static final int DEFAULT_PAGE_SIZE = 10;
+  private static final String ROOT_PATH = "/";
+  private static final String AFTER_PARAM = "page[after]";
+  private static final String SIZE_PARAM = "page[size]";
+  private static final String DEFAULT_SORT = "did";
 
-	private final TIRMapper trustedIssuerMapper;
-	private final TrustedIssuerRepository trustedIssuerRepository;
+  private final TIRMapper trustedIssuerMapper;
+  private final TrustedIssuerRepository trustedIssuerRepository;
 
-	@Override
-	public HttpResponse<IssuerVO> getIssuerV4(String did) {
-		checkDidFormat(did);
-		Optional<TrustedIssuer> optionalTrustedIssuer = trustedIssuerRepository.getByDid(did);
-		if (optionalTrustedIssuer.isEmpty()) {
-			return HttpResponse.notFound();
-		}
-		return HttpResponse.ok(trustedIssuerMapper.map(optionalTrustedIssuer.get()));
-	}
+  @Override
+  public HttpResponse<IssuerVO> getIssuerV4(String did) {
+    checkDidFormat(did);
+    Optional<TrustedIssuer> optionalTrustedIssuer = trustedIssuerRepository.getByDid(did);
+    if (optionalTrustedIssuer.isEmpty()) {
+      return HttpResponse.notFound();
+    }
+    return HttpResponse.ok(trustedIssuerMapper.map(optionalTrustedIssuer.get()));
+  }
 
-	// checks the basic structure of a did, will not validate them!
-	private void checkDidFormat(String did) {
-		String[] didParts = did.split(":");
-		if (didParts.length < 3 || !didParts[0].equals("did")) {
-			throw new IllegalArgumentException("Provided string is not a valid did.");
-		}
-	}
+  // checks the basic structure of a did, will not validate them!
+  private void checkDidFormat(String did) {
+    String[] didParts = did.split(":");
+    if (didParts.length < 3 || !didParts[0].equals("did")) {
+      throw new IllegalArgumentException("Provided string is not a valid did.");
+    }
+  }
 
-	/**
-	 * Implements anchor-based pagination on top of the offset-mechanism from the repository.
-	 */
-	@Override
-	public HttpResponse<IssuersResponseVO> getIssuersV4(@Nullable Integer pageSize, @Nullable Integer page) {
+  /** Implements anchor-based pagination on top of the offset-mechanism from the repository. */
+  @Override
+  public HttpResponse<IssuersResponseVO> getIssuersV4(
+      @Nullable Integer pageSize, @Nullable Integer page) {
 
-		pageSize = Optional.ofNullable(pageSize).orElse(DEFAULT_PAGE_SIZE);
-		if (pageSize < 1 || pageSize > 100) {
-			throw new IllegalArgumentException("The requested page size is not supported.");
-		}
-
-		Sort didSort = Sort.unsorted().order(DEFAULT_SORT);
-        Pageable pagination = Pageable.from( page, pageSize, didSort);
-		Page<TrustedIssuer> result = trustedIssuerRepository.findAll(pagination);
-
-		if (result.isEmpty()) {
-			return HttpResponse.ok(new IssuersResponseVO()
-					.items(List.of())
-					.total(0)
-					.pageSize(0)
-					.self(getHrefUri("")));
-		}
-
-        List<IssuerEntryVO> issuerEntries = result.getContent().stream()
-                .map(entry -> new IssuerEntryVO()
-                        .did(entry.getDid())
-                        .href(getHrefUri(entry.getDid()))
-                ).toList();
-		return HttpResponse.ok(new IssuersResponseVO()
-				.items(issuerEntries)
-				.total((int) result.getTotalSize())
-				.pageSize(result.getNumberOfElements())
-				.self(getHrefUri(""))
-				.links(getLinks(result)));
-	}
-
-    private URI getHrefUri(String path) {
-
-        UriBuilder builder = getBaseUriBuilder();
-        if (path != null && !path.isEmpty()) {
-            builder.path(path);
-        }
-        return builder.build();
+    pageSize = Optional.ofNullable(pageSize).orElse(DEFAULT_PAGE_SIZE);
+    if (pageSize < 1 || pageSize > 100) {
+      throw new IllegalArgumentException("The requested page size is not supported.");
     }
 
-    private UriBuilder getBaseUriBuilder() {
-        Optional<HttpRequest<Object>> httpRequest = ServerRequestContext.currentRequest();
-        if (httpRequest.isPresent()) {
-            HttpRequest<?> request = httpRequest.get();
-            URI baseUri = (URI) request.getAttribute(ForwardedForFilter.REQ_ATTR).orElse(URI.create(ROOT_PATH));
-            return UriBuilder.of(baseUri).replacePath(request.getPath());
-        }
-        return UriBuilder.of(ROOT_PATH);
+    Sort didSort = Sort.unsorted().order(DEFAULT_SORT);
+    Pageable pagination = Pageable.from(page, pageSize, didSort);
+    Page<TrustedIssuer> result = trustedIssuerRepository.findAll(pagination);
+
+    if (result.isEmpty()) {
+      return HttpResponse.ok(
+          new IssuersResponseVO().items(List.of()).total(0).pageSize(0).self(getHrefUri("")));
     }
 
-    private LinksVO getLinks(Page<?> page) {
-        LinksVO links = new LinksVO();
-        URI baseUri = getHrefUri("");
-        int pageSize = page.getSize();
+    List<IssuerEntryVO> issuerEntries =
+        result.getContent().stream()
+            .map(entry -> new IssuerEntryVO().did(entry.getDid()).href(getHrefUri(entry.getDid())))
+            .toList();
+    return HttpResponse.ok(
+        new IssuersResponseVO()
+            .items(issuerEntries)
+            .total((int) result.getTotalSize())
+            .pageSize(result.getNumberOfElements())
+            .self(getHrefUri(""))
+            .links(getLinks(result)));
+  }
 
-        if (page.hasPrevious()) {
-            links.prev(UriBuilder.of(baseUri)
-                    .queryParam(AFTER_PARAM, page.getPageable().previous().getNumber())
-                    .queryParam(SIZE_PARAM, page.getSize()).build());
+  private URI getHrefUri(String path) {
 
-        }
-        if (page.hasNext()) {
-            links.next(UriBuilder.of(baseUri)
-                    .queryParam(AFTER_PARAM, page.getPageable().next().getNumber())
-                    .queryParam(SIZE_PARAM, pageSize).build());
-        }
-
-        links.first(UriBuilder.of(baseUri)
-                .queryParam(AFTER_PARAM, 0)
-                .queryParam(SIZE_PARAM, pageSize).build());
-        links.last(UriBuilder.of(baseUri)
-                .queryParam(AFTER_PARAM, page.getTotalPages() - 1)
-                .queryParam(SIZE_PARAM, pageSize).build());
-        return links;
+    UriBuilder builder = getBaseUriBuilder();
+    if (path != null && !path.isEmpty()) {
+      builder.path(path);
     }
+    return builder.build();
+  }
+
+  private UriBuilder getBaseUriBuilder() {
+    Optional<HttpRequest<Object>> httpRequest = ServerRequestContext.currentRequest();
+    if (httpRequest.isPresent()) {
+      HttpRequest<?> request = httpRequest.get();
+      URI baseUri =
+          (URI) request.getAttribute(ForwardedForFilter.REQ_ATTR).orElse(URI.create(ROOT_PATH));
+      return UriBuilder.of(baseUri).replacePath(request.getPath());
+    }
+    return UriBuilder.of(ROOT_PATH);
+  }
+
+  private LinksVO getLinks(Page<?> page) {
+    LinksVO links = new LinksVO();
+    URI baseUri = getHrefUri("");
+    int pageSize = page.getSize();
+
+    if (page.hasPrevious()) {
+      links.prev(
+          UriBuilder.of(baseUri)
+              .queryParam(AFTER_PARAM, page.getPageable().previous().getNumber())
+              .queryParam(SIZE_PARAM, page.getSize())
+              .build());
+    }
+    if (page.hasNext()) {
+      links.next(
+          UriBuilder.of(baseUri)
+              .queryParam(AFTER_PARAM, page.getPageable().next().getNumber())
+              .queryParam(SIZE_PARAM, pageSize)
+              .build());
+    }
+
+    links.first(
+        UriBuilder.of(baseUri).queryParam(AFTER_PARAM, 0).queryParam(SIZE_PARAM, pageSize).build());
+    links.last(
+        UriBuilder.of(baseUri)
+            .queryParam(AFTER_PARAM, page.getTotalPages() - 1)
+            .queryParam(SIZE_PARAM, pageSize)
+            .build());
+    return links;
+  }
 }

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="001-add-v5-fields-to-credential" author="fiware">
+        <tagDatabase  tag="v0.0.5"/>
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="credential"/>
+        </preConditions>
+
+        <!-- Add issuer_type column for TIR v5 attribute issuerType field -->
+        <addColumn tableName="credential">
+            <column name="issuer_type" type="VARCHAR(255)" defaultValue="Undefined">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Add tao column for TIR v5 attribute trusted accreditation organization -->
+        <addColumn tableName="credential">
+            <column name="tao" type="VARCHAR(768)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Add root_tao column for TIR v5 attribute root trusted accreditation organization -->
+        <addColumn tableName="credential">
+            <column name="root_tao" type="VARCHAR(768)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

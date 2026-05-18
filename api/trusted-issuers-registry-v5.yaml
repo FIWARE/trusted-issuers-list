@@ -1,0 +1,477 @@
+openapi: 3.0.3
+info:
+  title: Trusted Issuers Registry v5
+  description: |
+    EBSI Trusted Issuers Registry v5 API. Provides read-only access to trusted issuers
+    with support for attributes and revisions as sub-resources. Includes a backward-compatible
+    deprecated response mode via the version query parameter.
+  version: v5
+tags:
+  - name: TIRv5
+paths:
+  /v5/issuers/:
+    get:
+      tags:
+        - TIRv5
+      parameters:
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/PageAfter'
+      operationId: getIssuersV5
+      summary: Returns a list of trusted issuers.
+      responses:
+        '200':
+          description: Successfully returned a list of issuers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssuersResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /v5/issuers/{did}:
+    get:
+      tags:
+        - TIRv5
+      parameters:
+        - $ref: '#/components/parameters/Did'
+        - $ref: '#/components/parameters/Version'
+      operationId: getIssuerV5
+      summary: Returns a trusted issuer identified by its DID.
+      description: |
+        Returns issuer details. When version=latest (default), returns a link-based
+        response with an attributes URL. When version=deprecated, returns inline attributes.
+      responses:
+        '200':
+          description: Successfully returned the issuer.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: >
+                  Polymorphic response. When version=latest (default), returns
+                  {did, attributes (URI), hasAttributes}. When version=deprecated,
+                  returns {did, attributes (inline array)}.
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /v5/issuers/{did}/attributes:
+    get:
+      tags:
+        - TIRv5
+      parameters:
+        - $ref: '#/components/parameters/Did'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/PageAfter'
+      operationId: getIssuerAttributesV5
+      summary: Returns a list of attributes for a trusted issuer.
+      responses:
+        '200':
+          description: Successfully returned attributes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttributesResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /v5/issuers/{did}/attributes/{attributeId}:
+    get:
+      tags:
+        - TIRv5
+      parameters:
+        - $ref: '#/components/parameters/Did'
+        - $ref: '#/components/parameters/AttributeId'
+      operationId: getIssuerAttributeV5
+      summary: Returns a specific attribute for a trusted issuer.
+      responses:
+        '200':
+          description: Successfully returned the attribute.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttributeDetails'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /v5/issuers/{did}/attributes/{attributeId}/revisions:
+    get:
+      tags:
+        - TIRv5
+      parameters:
+        - $ref: '#/components/parameters/Did'
+        - $ref: '#/components/parameters/AttributeId'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/PageAfter'
+      operationId: getIssuerAttributeRevisionsV5
+      summary: Returns a list of revisions for an attribute.
+      responses:
+        '200':
+          description: Successfully returned revisions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevisionsResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /v5/issuers/{did}/attributes/{attributeId}/revisions/{revisionId}:
+    get:
+      tags:
+        - TIRv5
+      parameters:
+        - $ref: '#/components/parameters/Did'
+        - $ref: '#/components/parameters/AttributeId'
+        - $ref: '#/components/parameters/RevisionId'
+      operationId: getIssuerAttributeRevisionV5
+      summary: Returns a specific revision of an attribute.
+      responses:
+        '200':
+          description: Successfully returned the revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttributeDetails'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+components:
+  parameters:
+    Did:
+      name: did
+      description: Issuer's DID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: did
+        example: did:key:z6MksU6tMfbaDzvaRe5oFE4eZTVTV4HJM4fmQWWGsDGQVsEr
+    PageSize:
+      name: page[size]
+      description: Maximum number of objects that may be returned per page.
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 50
+        default: 10
+        example: 10
+    PageAfter:
+      name: page[after]
+      description: Cursor that points to the end of the page of data that has been returned.
+      in: query
+      required: false
+      schema:
+        type: string
+        default: "0"
+        example: "0"
+    Version:
+      name: version
+      description: |
+        Response format version. 'latest' (default) returns link-based attributes,
+        'deprecated' returns inline attributes for backward compatibility.
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - deprecated
+          - latest
+        default: latest
+        example: latest
+    AttributeId:
+      name: attributeId
+      description: SHA-256 hex-encoded hash identifying the attribute.
+      in: path
+      required: true
+      schema:
+        type: string
+        example: 31a014c390aa9ad2b47a1df8904c8addf87db279b06eae50797f546da63229d3
+    RevisionId:
+      name: revisionId
+      description: Identifier for the revision.
+      in: path
+      required: true
+      schema:
+        type: string
+        example: rev-1
+  schemas:
+    IssuersResponse:
+      type: object
+      description: Paginated list of trusted issuers.
+      properties:
+        self:
+          description: URI to this page of issuers
+          type: string
+          format: uri
+        items:
+          description: List of issuers with their decentralized identifier
+          type: array
+          items:
+            $ref: '#/components/schemas/IssuerEntry'
+        total:
+          description: Total number of items in the collection
+          type: integer
+          example: 10
+        pageSize:
+          description: Number of items returned per page
+          type: integer
+          example: 10
+        links:
+          $ref: '#/components/schemas/Links'
+      required:
+        - self
+        - items
+        - total
+        - pageSize
+        - links
+    IssuerEntry:
+      type: object
+      description: Summary of a trusted issuer in list responses.
+      properties:
+        did:
+          description: Issuer's DID
+          type: string
+          format: did
+          example: did:key:z6MksU6tMfbaDzvaRe5oFE4eZTVTV4HJM4fmQWWGsDGQVsEr
+        href:
+          description: Link to the issuer resource
+          type: string
+          format: uri
+          example: http://my-registry.org/v5/issuers/did:key:z6MksU6tMfbaDzvaRe5oFE4eZTVTV4HJM4fmQWWGsDGQVsEr
+      required:
+        - did
+        - href
+    AttributesResponse:
+      type: object
+      description: Paginated list of issuer attributes.
+      properties:
+        self:
+          description: URI to this page of attributes
+          type: string
+          format: uri
+        items:
+          description: List of attribute entries
+          type: array
+          items:
+            $ref: '#/components/schemas/AttributeEntry'
+        total:
+          description: Total number of attributes
+          type: integer
+          example: 5
+        pageSize:
+          description: Number of items returned per page
+          type: integer
+          example: 10
+        links:
+          $ref: '#/components/schemas/Links'
+      required:
+        - self
+        - items
+        - total
+        - pageSize
+        - links
+    AttributeEntry:
+      type: object
+      description: Summary of an attribute in list responses.
+      properties:
+        id:
+          description: SHA-256 hex-encoded hash identifying the attribute
+          type: string
+          example: 31a014c390aa9ad2b47a1df8904c8addf87db279b06eae50797f546da63229d3
+        href:
+          description: Link to the attribute resource
+          type: string
+          format: uri
+          example: http://my-registry.org/v5/issuers/did:example/attributes/31a014c
+      required:
+        - id
+        - href
+    AttributeDetails:
+      type: object
+      description: Detailed attribute information for a trusted issuer.
+      properties:
+        did:
+          description: Issuer's DID
+          type: string
+          format: did
+          example: did:key:z6MksU6tMfbaDzvaRe5oFE4eZTVTV4HJM4fmQWWGsDGQVsEr
+        attribute:
+          $ref: '#/components/schemas/Attribute'
+      required:
+        - did
+        - attribute
+    Attribute:
+      type: object
+      description: A verifiable credential attribute.
+      properties:
+        hash:
+          description: SHA-256 hash of the payload
+          type: string
+          example: 31a014c390aa9ad2b47a1df8904c8addf87db279b06eae50797f546da63229d3
+        body:
+          description: Base64 encoded content
+          type: string
+          example: eyJhbnkiOiJBbnkgYXR0cmlidXRlIGhlcmUiLCJ0eXBlIjoiY3JlZGVudGlhbCJ9
+        issuerType:
+          description: Type of the trusted issuer
+          type: string
+          enum:
+            - "RootTAO"
+            - "TAO"
+            - "TI"
+            - "Revoked"
+            - "Undefined"
+        tao:
+          description: DID of the Trusted Accredited Organization that accredited the insertion
+          type: string
+          example: did:web:my.tao
+        rootTao:
+          description: DID of the Root Trusted Accredited Organization
+          type: string
+          example: did:web:my.root.tao
+      required:
+        - hash
+        - body
+        - issuerType
+    RevisionsResponse:
+      type: object
+      description: Paginated list of attribute revisions.
+      properties:
+        self:
+          description: URI to this page of revisions
+          type: string
+          format: uri
+        items:
+          description: List of revision entries
+          type: array
+          items:
+            $ref: '#/components/schemas/RevisionEntry'
+        total:
+          description: Total number of revisions
+          type: integer
+          example: 1
+        pageSize:
+          description: Number of items returned per page
+          type: integer
+          example: 10
+        links:
+          $ref: '#/components/schemas/Links'
+      required:
+        - self
+        - items
+        - total
+        - pageSize
+        - links
+    RevisionEntry:
+      type: object
+      description: Summary of a revision in list responses.
+      properties:
+        id:
+          description: Revision identifier
+          type: string
+          example: rev-1
+        href:
+          description: Link to the revision resource
+          type: string
+          format: uri
+          example: http://my-registry.org/v5/issuers/did:example/attributes/31a014c/revisions/rev-1
+      required:
+        - id
+        - href
+    Links:
+      type: object
+      description: Links model used for pagination.
+      properties:
+        first:
+          description: URI of the first page
+          type: string
+          format: uri
+          example: https://my-registry.org/v5/issuers?page[after]=0&page[size]=10
+        prev:
+          description: URI of the previous page
+          type: string
+          format: uri
+          example: https://my-registry.org/v5/issuers?page[after]=2&page[size]=10
+        next:
+          description: URI of the next page
+          type: string
+          format: uri
+          example: https://my-registry.org/v5/issuers?page[after]=4&page[size]=10
+        last:
+          description: URI of the last page
+          type: string
+          format: uri
+          example: https://my-registry.org/v5/issuers?page[after]=13&page[size]=10
+    ProblemDetails:
+      type: object
+      description: RFC 7807 Problem Details for HTTP APIs.
+      properties:
+        type:
+          description: An absolute URI that identifies the problem type.
+          type: string
+          format: uri
+        title:
+          description: A short summary of the problem type.
+          type: string
+          example: Internal Server Error
+        status:
+          description: The HTTP status code generated by the origin server.
+          type: integer
+          example: 500
+        detail:
+          description: A human readable explanation specific to this occurrence.
+          type: string
+          example: Connection timeout
+        instance:
+          description: An absolute URI that identifies the specific occurrence.
+          type: string
+          format: uri

@@ -76,6 +76,7 @@
         <coveralls.token>myToken</coveralls.token>
         <jacoco.reportFolder>${project.build.directory}/jacoco/${project.artifactId}</jacoco.reportFolder>
         <jacoco.utReportFile>${jacoco.reportFolder}/test.exec</jacoco.utReportFile>
+        <version.com.diffplug.spotless>3.2.1</version.com.diffplug.spotless>
     </properties>
 
 
@@ -296,6 +297,18 @@
                             <modelPackage>org.fiware.iam.til.model</modelPackage>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>tir-v5</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>./api/trusted-issuers-registry-v5.yaml</inputSpec>
+                            <apiPackage>org.fiware.iam.tir.v5.api</apiPackage>
+                            <modelPackage>org.fiware.iam.tir.v5.model</modelPackage>
+                        </configuration>
+                    </execution>
                 </executions>
                 <dependencies>
                     <dependency>
@@ -486,6 +499,24 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${version.com.diffplug.spotless}</version>
+
+                <configuration>
+                    <java>
+                        <!-- Add license header -->
+                        <licenseHeader>
+                            <file>${project.basedir}/license-header.txt</file>
+                            <delimiter>package</delimiter>
+                        </licenseHeader>
+
+                        <!-- Optional but recommended formatting -->
+                        <googleJavaFormat/>
+                    </java>
+                </configuration>
             </plugin>
         </plugins>
     </build>

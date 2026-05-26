@@ -18,5 +18,8 @@ jobs:
           java-version: '21'
           java-package: jdk
 
+      - name: Check code style and license
+        run: mvn clean spotless:check
+
       - name: Run tests
         run: mvn clean test jacoco:report coveralls:report -Dcoveralls.token=${{ secrets.COVERALLS_TOKEN }}

@@ -1,12 +1,34 @@
+/*
+ * Copyright 2023 FIWARE Foundation e.V. and/or its affiliates
+ * and other contributors as indicated by the @author tags.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.fiware.iam.rest;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.client.exceptions.HttpClientResponseException;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
-import org.fiware.iam.repository.TrustedIssuerRepository;
 import org.fiware.iam.TILMapper;
+import org.fiware.iam.repository.TrustedIssuerRepository;
 import org.fiware.iam.til.api.IssuerApiTestClient;
 import org.fiware.iam.til.api.IssuerApiTestSpec;
 import org.fiware.iam.til.model.*;
@@ -16,283 +38,323 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
-
-import static org.junit.jupiter.api.Assertions.*;
-
 @RequiredArgsConstructor
 @MicronautTest
-public class TrustedIssuersListControllerTest
-        implements IssuerApiTestSpec {
+public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
 
-    public final IssuerApiTestClient testClient;
-    public final TrustedIssuerRepository repository;
-    public final TILMapper trustedIssuerMapper;
+  public final IssuerApiTestClient testClient;
+  public final TrustedIssuerRepository repository;
+  public final TILMapper trustedIssuerMapper;
 
-    private TrustedIssuerVO issuerToCreate;
-    private UpdatePair issuerUpdate;
-    private String didToUpdate;
+  private TrustedIssuerVO issuerToCreate;
+  private UpdatePair issuerUpdate;
+  private String didToUpdate;
 
-    @BeforeEach
-    public void cleanUp() {
-        repository.deleteAll();
+  @BeforeEach
+  public void cleanUp() {
+    repository.deleteAll();
+  }
+
+  @Override
+  public void createTrustedIssuer201() throws Exception {
+    HttpResponse<?> creationResponse = testClient.createTrustedIssuer(issuerToCreate);
+    assertEquals(
+        HttpStatus.CREATED, creationResponse.getStatus(), "The issuer should have been created.");
+    assertTrue(
+        repository.getByDid(issuerToCreate.getDid()).isPresent(),
+        "The issuer should have been persisted to the repository.");
+    Optional<String> locationHeader = creationResponse.getHeaders().findFirst("location");
+    assertTrue(locationHeader.isPresent(), "A location header should be present.");
+    assertEquals(
+        "/v4/issuers/did:elsi:happypets",
+        locationHeader.get(),
+        "The correct location should be returned.");
+  }
+
+  @ParameterizedTest
+  @MethodSource("validIssuers")
+  public void createTrustedIssuer201(TrustedIssuerVO trustedIssuer) throws Exception {
+    issuerToCreate = trustedIssuer;
+    createTrustedIssuer201();
+  }
+
+  private static Stream<Arguments> validIssuers() {
+    return Stream.of(
+        Arguments.of(TrustedIssuerVOTestExample.build()),
+        Arguments.of(
+            TrustedIssuerVOTestExample.build()
+                .credentials(List.of(CredentialsVOTestExample.build()))),
+        Arguments.of(
+            TrustedIssuerVOTestExample.build()
+                .credentials(
+                    List.of(
+                        CredentialsVOTestExample.build()
+                            .validFor(TimeRangeVOTestExample.build())))),
+        Arguments.of(
+            TrustedIssuerVOTestExample.build()
+                .credentials(
+                    List.of(
+                        CredentialsVOTestExample.build()
+                            .validFor(TimeRangeVOTestExample.build().to(null))))),
+        Arguments.of(
+            TrustedIssuerVOTestExample.build()
+                .credentials(
+                    List.of(
+                        CredentialsVOTestExample.build()
+                            .validFor(TimeRangeVOTestExample.build().from(null))))),
+        Arguments.of(
+            TrustedIssuerVOTestExample.build()
+                .credentials(
+                    List.of(
+                        CredentialsVOTestExample.build()
+                            .claims(List.of(ClaimVOTestExample.build()))))),
+        Arguments.of(
+            TrustedIssuerVOTestExample.build()
+                .credentials(
+                    List.of(
+                        CredentialsVOTestExample.build()
+                            .claims(
+                                List.of(
+                                    ClaimVOTestExample.build()
+                                        .allowedValues(List.of("test", 1))))))));
+  }
+
+  @Override
+  @Test
+  public void createTrustedIssuer400() throws Exception {
+    try {
+      testClient.createTrustedIssuer(TrustedIssuerVOTestExample.build().did(null));
+    } catch (HttpClientResponseException e) {
+      assertEquals(
+          HttpStatus.BAD_REQUEST, e.getStatus(), "The issuer should not have been created.");
+      return;
+    }
+    fail("The creation attempt should fail for an invalid issuer.");
+  }
+
+  @Override
+  @Test
+  public void createTrustedIssuer409() throws Exception {
+    TrustedIssuerVO theIssuer = TrustedIssuerVOTestExample.build();
+    assertEquals(
+        HttpStatus.CREATED,
+        testClient.createTrustedIssuer(theIssuer).getStatus(),
+        "The issuer should initially be created.");
+    try {
+      testClient.createTrustedIssuer(theIssuer);
+    } catch (HttpClientResponseException e) {
+      assertEquals(HttpStatus.CONFLICT, e.getStatus(), "The issuer should not have been created.");
+      return;
+    }
+    fail("The creation attempt should fail for an already existing issuer.");
+  }
+
+  @Override
+  @Test
+  public void deleteIssuerById204() throws Exception {
+    TrustedIssuerVO theIssuer = TrustedIssuerVOTestExample.build();
+    assertEquals(
+        HttpStatus.CREATED,
+        testClient.createTrustedIssuer(theIssuer).getStatus(),
+        "The issuer should initially be created.");
+    HttpResponse<?> deletionResponse = testClient.deleteIssuerById(theIssuer.getDid());
+    assertEquals(
+        HttpStatus.NO_CONTENT,
+        deletionResponse.getStatus(),
+        "The deletion request should succeed.");
+    assertTrue(
+        repository.getByDid(theIssuer.getDid()).isEmpty(),
+        "The issuer should not exist in the repository anymore.");
+  }
+
+  @Override
+  @Test
+  public void deleteIssuerById404() throws Exception {
+    HttpResponse<?> deletionResponse = testClient.deleteIssuerById("did:web:nonexistent.org");
+    assertEquals(
+        HttpStatus.NOT_FOUND, deletionResponse.getStatus(), "The deletion request should succeed.");
+  }
+
+  @Test
+  @Override
+  public void getIssuer200() throws Exception {
+    TrustedIssuerVO theIssuer = TrustedIssuerVOTestExample.build();
+    assertEquals(
+        HttpStatus.CREATED,
+        testClient.createTrustedIssuer(theIssuer).getStatus(),
+        "The issuer should initially be created.");
+    HttpResponse<?> getResponse = testClient.getIssuer(theIssuer.getDid());
+    assertEquals(HttpStatus.OK, getResponse.getStatus(), "The retrieval request should succeed.");
+    assertEquals(theIssuer, getResponse.body(), "The issuer should be the same");
+  }
+
+  @Test
+  @Override
+  public void getIssuer404() throws Exception {
+    HttpResponse<?> getResponse = testClient.getIssuer("notExistingDid");
+    assertEquals(HttpStatus.NOT_FOUND, getResponse.getStatus(), "No issuer should have been found");
+  }
+
+  @Test
+  @Override
+  public void getIssuers200() throws Exception {
+    List<TrustedIssuerVO> issuers = new ArrayList<>();
+    for (int i = 10; i < 30; i++) {
+      TrustedIssuerVO issuer =
+          TrustedIssuerVOTestExample.build().did(String.format("did:elsi:%s", i));
+      testClient.createTrustedIssuer(issuer);
+      issuers.add(issuer);
     }
 
-    @Override
-    public void createTrustedIssuer201() throws Exception {
-        HttpResponse<?> creationResponse = testClient.createTrustedIssuer(issuerToCreate);
-        assertEquals(HttpStatus.CREATED, creationResponse.getStatus(), "The issuer should have been created.");
-        assertTrue(repository.getByDid(issuerToCreate.getDid()).isPresent(),
-                "The issuer should have been persisted to the repository.");
-        Optional<String> locationHeader = creationResponse.getHeaders().findFirst("location");
-        assertTrue(locationHeader.isPresent(), "A location header should be present.");
-        assertEquals("/v4/issuers/did:elsi:happypets", locationHeader.get(),
-                "The correct location should be returned.");
+    // default pagination: page 0, size 10
+    HttpResponse<TrustedIssuersListResponseVO> response = testClient.getIssuers(null, null);
+    assertEquals(HttpStatus.OK, response.getStatus(), "The issuers should have been returned.");
+    TrustedIssuersListResponseVO body = response.body();
+    assertEquals(20, body.getTotal(), "Total count should include all issuers.");
+    assertEquals(10, body.getPageSize(), "Default page size should be 10.");
+    assertEquals(0, body.getPage(), "Default page should be 0.");
+    assertEquals(10, body.getItems().size(), "First page should contain 10 items.");
+    assertEquals("did:elsi:10", body.getItems().get(0), "Items should be sorted by DID.");
+
+    // custom page size
+    response = testClient.getIssuers(20, null);
+    assertEquals(HttpStatus.OK, response.getStatus(), "The issuers should have been returned.");
+    body = response.body();
+    assertEquals(20, body.getTotal(), "Total count should include all issuers.");
+    assertEquals(20, body.getPageSize(), "Requested page size should be applied.");
+    assertEquals(20, body.getItems().size(), "All issuers should be returned in one page.");
+
+    // second page
+    response = testClient.getIssuers(10, 1);
+    assertEquals(HttpStatus.OK, response.getStatus(), "The issuers should have been returned.");
+    body = response.body();
+    assertEquals(20, body.getTotal(), "Total count should include all issuers.");
+    assertEquals(10, body.getPageSize(), "Page size should be 10.");
+    assertEquals(1, body.getPage(), "Page number should be 1.");
+    assertEquals(
+        "did:elsi:20", body.getItems().get(0), "Second page should start after first page items.");
+  }
+
+  @Test
+  public void getIssuersEmpty200() throws Exception {
+    HttpResponse<TrustedIssuersListResponseVO> response = testClient.getIssuers(null, null);
+    assertEquals(HttpStatus.OK, response.getStatus(), "An empty list should still return 200.");
+    TrustedIssuersListResponseVO body = response.body();
+    assertEquals(0, body.getTotal(), "Total should be 0 for an empty list.");
+    assertTrue(body.getItems().isEmpty(), "Items should be empty.");
+  }
+
+  @Test
+  public void getIssuersInvalidPageSize400() throws Exception {
+    try {
+      testClient.getIssuers(0, null);
+    } catch (HttpClientResponseException e) {
+      assertEquals(
+          HttpStatus.BAD_REQUEST,
+          e.getStatus(),
+          "A page size below the minimum should be rejected.");
+      return;
     }
+    fail("A page size of 0 should be rejected.");
+  }
 
-    @ParameterizedTest
-    @MethodSource("validIssuers")
-    public void createTrustedIssuer201(TrustedIssuerVO trustedIssuer) throws Exception {
-        issuerToCreate = trustedIssuer;
-        createTrustedIssuer201();
+  @Override
+  public void updateIssuer200() throws Exception {
+    assertEquals(
+        HttpStatus.CREATED,
+        testClient.createTrustedIssuer(issuerUpdate.initialIssuer).getStatus(),
+        "The issuer should initially be created.");
+    HttpResponse<?> updateResponse =
+        testClient.updateIssuer(issuerUpdate.issuerUpdate.getDid(), issuerUpdate.issuerUpdate);
+    assertEquals(HttpStatus.OK, updateResponse.getStatus(), "The issuer should have been updated.");
+
+    TrustedIssuerVO updatedIssuerVO =
+        trustedIssuerMapper.map(repository.getByDid(issuerUpdate.issuerUpdate.getDid()).get());
+
+    // Double map VO entity to avoid type mismatch due to use of List.of in builder
+    assertEquals(
+        updatedIssuerVO,
+        trustedIssuerMapper.map(trustedIssuerMapper.map(issuerUpdate.issuerUpdate)),
+        "The updated issuer should match.");
+  }
+
+  @ParameterizedTest
+  @MethodSource("validIssuerUpdates")
+  public void updateIssuer200(UpdatePair updatePair) throws Exception {
+    issuerUpdate = updatePair;
+    updateIssuer200();
+  }
+
+  private static TrustedIssuerVO fromArgument(Arguments arg) {
+    if (arg.get().length != 1) {
+      throw new IllegalArgumentException("Only one argument expected.");
     }
-
-    private static Stream<Arguments> validIssuers() {
-        return Stream.of(
-                Arguments.of(
-                        TrustedIssuerVOTestExample.build()),
-                Arguments.of(
-                        TrustedIssuerVOTestExample.build().credentials(List.of(CredentialsVOTestExample.build()))),
-                Arguments.of(TrustedIssuerVOTestExample.build()
-                        .credentials(List.of(CredentialsVOTestExample.build().validFor(
-                                TimeRangeVOTestExample.build())))),
-                Arguments.of(TrustedIssuerVOTestExample.build()
-                        .credentials(List.of(CredentialsVOTestExample.build().validFor(
-                                TimeRangeVOTestExample.build().to(null))))),
-                Arguments.of(TrustedIssuerVOTestExample.build()
-                        .credentials(List.of(CredentialsVOTestExample.build().validFor(
-                                TimeRangeVOTestExample.build().from(null))))),
-                Arguments.of(TrustedIssuerVOTestExample.build()
-                        .credentials(List.of(CredentialsVOTestExample.build().claims(List.of(
-                                ClaimVOTestExample.build()))))),
-                Arguments.of(TrustedIssuerVOTestExample.build()
-                        .credentials(List.of(CredentialsVOTestExample.build().claims(List.of(
-                                ClaimVOTestExample.build().allowedValues(List.of("test", 1)))))))
-        );
+    if (arg.get()[0] instanceof TrustedIssuerVO ti) {
+      return ti;
     }
+    throw new IllegalArgumentException("Provided argument does not contain a TrustedIssuerVO.");
+  }
 
-    @Override
-    @Test
-    public void createTrustedIssuer400() throws Exception {
-        try {
-            testClient.createTrustedIssuer(TrustedIssuerVOTestExample.build().did(null));
-        } catch (HttpClientResponseException e) {
-            assertEquals(HttpStatus.BAD_REQUEST, e.getStatus(), "The issuer should not have been created.");
-            return;
-        }
-        fail("The creation attempt should fail for an invalid issuer.");
-    }
-
-    @Override
-    @Test
-    public void createTrustedIssuer409() throws Exception {
-        TrustedIssuerVO theIssuer = TrustedIssuerVOTestExample.build();
-        assertEquals(HttpStatus.CREATED, testClient.createTrustedIssuer(theIssuer).getStatus(),
-                "The issuer should initially be created.");
-        try {
-            testClient.createTrustedIssuer(theIssuer);
-        } catch (HttpClientResponseException e) {
-            assertEquals(HttpStatus.CONFLICT, e.getStatus(), "The issuer should not have been created.");
-            return;
-        }
-        fail("The creation attempt should fail for an already existing issuer.");
-    }
-
-    @Override
-    @Test
-    public void deleteIssuerById204() throws Exception {
-        TrustedIssuerVO theIssuer = TrustedIssuerVOTestExample.build();
-        assertEquals(HttpStatus.CREATED, testClient.createTrustedIssuer(theIssuer).getStatus(),
-                "The issuer should initially be created.");
-        HttpResponse<?> deletionResponse = testClient.deleteIssuerById(theIssuer.getDid());
-        assertEquals(HttpStatus.NO_CONTENT, deletionResponse.getStatus(), "The deletion request should succeed.");
-        assertTrue(repository.getByDid(theIssuer.getDid()).isEmpty(),
-                "The issuer should not exist in the repository anymore.");
-    }
-
-    @Override
-    @Test
-    public void deleteIssuerById404() throws Exception {
-        HttpResponse<?> deletionResponse = testClient.deleteIssuerById("did:web:nonexistent.org");
-        assertEquals(HttpStatus.NOT_FOUND, deletionResponse.getStatus(), "The deletion request should succeed.");
-    }
-
-    @Test
-    @Override
-    public void getIssuer200() throws Exception {
-        TrustedIssuerVO theIssuer = TrustedIssuerVOTestExample.build();
-        assertEquals(HttpStatus.CREATED, testClient.createTrustedIssuer(theIssuer).getStatus(),
-                "The issuer should initially be created.");
-        HttpResponse<?> getResponse = testClient.getIssuer(theIssuer.getDid());
-        assertEquals(HttpStatus.OK, getResponse.getStatus(), "The retrieval request should succeed.");
-        assertEquals(theIssuer, getResponse.body(), "The issuer should be the same");
-    }
-
-    @Test
-    @Override
-    public void getIssuer404() throws Exception {
-        HttpResponse<?> getResponse = testClient.getIssuer("notExistingDid");
-        assertEquals(HttpStatus.NOT_FOUND, getResponse.getStatus(), "No issuer should have been found");
-    }
-
-    @Test
-    @Override
-    public void getIssuers200() throws Exception {
-        List<TrustedIssuerVO> issuers = new ArrayList<>();
-        for (int i = 10; i < 30; i++) {
-            TrustedIssuerVO issuer = TrustedIssuerVOTestExample.build()
-                    .did(String.format("did:elsi:%s", i));
-            testClient.createTrustedIssuer(issuer);
-            issuers.add(issuer);
-        }
-
-        // default pagination: page 0, size 10
-        HttpResponse<TrustedIssuersListResponseVO> response = testClient.getIssuers(null, null);
-        assertEquals(HttpStatus.OK, response.getStatus(), "The issuers should have been returned.");
-        TrustedIssuersListResponseVO body = response.body();
-        assertEquals(20, body.getTotal(), "Total count should include all issuers.");
-        assertEquals(10, body.getPageSize(), "Default page size should be 10.");
-        assertEquals(0, body.getPage(), "Default page should be 0.");
-        assertEquals(10, body.getItems().size(), "First page should contain 10 items.");
-        assertEquals("did:elsi:10", body.getItems().get(0), "Items should be sorted by DID.");
-
-        // custom page size
-        response = testClient.getIssuers(20, null);
-        assertEquals(HttpStatus.OK, response.getStatus(), "The issuers should have been returned.");
-        body = response.body();
-        assertEquals(20, body.getTotal(), "Total count should include all issuers.");
-        assertEquals(20, body.getPageSize(), "Requested page size should be applied.");
-        assertEquals(20, body.getItems().size(), "All issuers should be returned in one page.");
-
-        // second page
-        response = testClient.getIssuers(10, 1);
-        assertEquals(HttpStatus.OK, response.getStatus(), "The issuers should have been returned.");
-        body = response.body();
-        assertEquals(20, body.getTotal(), "Total count should include all issuers.");
-        assertEquals(10, body.getPageSize(), "Page size should be 10.");
-        assertEquals(1, body.getPage(), "Page number should be 1.");
-        assertEquals("did:elsi:20", body.getItems().get(0),
-                "Second page should start after first page items.");
-    }
-
-    @Test
-    public void getIssuersEmpty200() throws Exception {
-        HttpResponse<TrustedIssuersListResponseVO> response = testClient.getIssuers(null, null);
-        assertEquals(HttpStatus.OK, response.getStatus(), "An empty list should still return 200.");
-        TrustedIssuersListResponseVO body = response.body();
-        assertEquals(0, body.getTotal(), "Total should be 0 for an empty list.");
-        assertTrue(body.getItems().isEmpty(), "Items should be empty.");
-    }
-
-    @Test
-    public void getIssuersInvalidPageSize400() throws Exception {
-        try {
-            testClient.getIssuers(0, null);
-        } catch (HttpClientResponseException e) {
-            assertEquals(HttpStatus.BAD_REQUEST, e.getStatus(),
-                    "A page size below the minimum should be rejected.");
-            return;
-        }
-        fail("A page size of 0 should be rejected.");
-    }
-
-    @Override
-    public void updateIssuer200() throws Exception {
-        assertEquals(HttpStatus.CREATED, testClient.createTrustedIssuer(issuerUpdate.initialIssuer).getStatus(),
-                "The issuer should initially be created.");
-        HttpResponse<?> updateResponse = testClient.updateIssuer(issuerUpdate.issuerUpdate.getDid(),
-                issuerUpdate.issuerUpdate);
-        assertEquals(HttpStatus.OK, updateResponse.getStatus(), "The issuer should have been updated.");
-        
-        TrustedIssuerVO updatedIssuerVO = trustedIssuerMapper.map(repository.getByDid(issuerUpdate.issuerUpdate.getDid()).get());
-
-        // Double map VO entity to avoid type mismatch due to use of List.of in builder
-        assertEquals(updatedIssuerVO, trustedIssuerMapper.map(trustedIssuerMapper.map(issuerUpdate.issuerUpdate)), "The updated issuer should match.");
-    }  
-
-    @ParameterizedTest
-    @MethodSource("validIssuerUpdates")
-    public void updateIssuer200(UpdatePair updatePair) throws Exception {
-        issuerUpdate = updatePair;
-        updateIssuer200();
-    }
-
-    private static TrustedIssuerVO fromArgument(Arguments arg) {
-        if (arg.get().length != 1) {
-            throw new IllegalArgumentException("Only one argument expected.");
-        }
-        if (arg.get()[0] instanceof TrustedIssuerVO ti) {
-            return ti;
-        }
-        throw new IllegalArgumentException("Provided argument does not contain a TrustedIssuerVO.");
-    }
-
-    private static Stream<Arguments> validIssuerUpdates() {
-        return validIssuers().flatMap(initialIssuerArg ->
+  private static Stream<Arguments> validIssuerUpdates() {
+    return validIssuers()
+        .flatMap(
+            initialIssuerArg ->
                 validIssuers()
-                        .map(
-                                updateArg -> new UpdatePair(fromArgument(initialIssuerArg), fromArgument(updateArg)))
-                        .toList()
-                        .stream()
-        ).map(Arguments::of);
-    }
+                    .map(
+                        updateArg ->
+                            new UpdatePair(fromArgument(initialIssuerArg), fromArgument(updateArg)))
+                    .toList()
+                    .stream())
+        .map(Arguments::of);
+  }
 
-    @Override
-    @Test
-    public void updateIssuer404() throws Exception {
-        TrustedIssuerVO nonExistentIssuer = TrustedIssuerVOTestExample.build();
-        HttpResponse<?> updateResponse = testClient.updateIssuer(nonExistentIssuer.getDid(), nonExistentIssuer);
-        assertEquals(HttpStatus.NOT_FOUND, updateResponse.getStatus(), "The replacement should result in a 404.");
-    }
+  @Override
+  @Test
+  public void updateIssuer404() throws Exception {
+    TrustedIssuerVO nonExistentIssuer = TrustedIssuerVOTestExample.build();
+    HttpResponse<?> updateResponse =
+        testClient.updateIssuer(nonExistentIssuer.getDid(), nonExistentIssuer);
+    assertEquals(
+        HttpStatus.NOT_FOUND,
+        updateResponse.getStatus(),
+        "The replacement should result in a 404.");
+  }
 
-    @Override
-    public void updateIssuer400() throws Exception {
-        assertEquals(HttpStatus.CREATED, testClient.createTrustedIssuer(issuerUpdate.initialIssuer).getStatus(),
-                "The issuer should initially be created.");
-        try {
-            testClient.updateIssuer(didToUpdate, issuerUpdate.issuerUpdate);
-        } catch (HttpClientResponseException e) {
-            assertEquals(HttpStatus.BAD_REQUEST, e.getStatus(), "Invalid updates should be rejected.");
-            return;
-        }
-        fail("Invalid updates should be rejected.");
+  @Override
+  public void updateIssuer400() throws Exception {
+    assertEquals(
+        HttpStatus.CREATED,
+        testClient.createTrustedIssuer(issuerUpdate.initialIssuer).getStatus(),
+        "The issuer should initially be created.");
+    try {
+      testClient.updateIssuer(didToUpdate, issuerUpdate.issuerUpdate);
+    } catch (HttpClientResponseException e) {
+      assertEquals(HttpStatus.BAD_REQUEST, e.getStatus(), "Invalid updates should be rejected.");
+      return;
     }
+    fail("Invalid updates should be rejected.");
+  }
 
-    @ParameterizedTest
-    @MethodSource("invalidUpdates")
-    public void updateIssuer400(String did, UpdatePair invalidUpdate) throws Exception {
-        issuerUpdate = invalidUpdate;
-        didToUpdate = did;
-        updateIssuer400();
-    }
+  @ParameterizedTest
+  @MethodSource("invalidUpdates")
+  public void updateIssuer400(String did, UpdatePair invalidUpdate) throws Exception {
+    issuerUpdate = invalidUpdate;
+    didToUpdate = did;
+    updateIssuer400();
+  }
 
-    private static Stream<Arguments> invalidUpdates() {
-        return Stream.of(
-                Arguments.of(
-                        "did:elsi:happypets",
-                        new UpdatePair(TrustedIssuerVOTestExample.build(),
-                                TrustedIssuerVOTestExample.build().did(null))),
-                Arguments.of(
-                        "did:elsi:happypets",
-                        new UpdatePair(TrustedIssuerVOTestExample.build(),
-                                TrustedIssuerVOTestExample.build().did("did:web:somethingelse"))
-                )
-        );
-    }
+  private static Stream<Arguments> invalidUpdates() {
+    return Stream.of(
+        Arguments.of(
+            "did:elsi:happypets",
+            new UpdatePair(
+                TrustedIssuerVOTestExample.build(), TrustedIssuerVOTestExample.build().did(null))),
+        Arguments.of(
+            "did:elsi:happypets",
+            new UpdatePair(
+                TrustedIssuerVOTestExample.build(),
+                TrustedIssuerVOTestExample.build().did("did:web:somethingelse"))));
+  }
 
-    record UpdatePair(TrustedIssuerVO initialIssuer, TrustedIssuerVO issuerUpdate) {
-    }
+  record UpdatePair(TrustedIssuerVO initialIssuer, TrustedIssuerVO issuerUpdate) {}
 }

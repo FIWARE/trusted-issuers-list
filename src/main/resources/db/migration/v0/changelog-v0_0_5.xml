@@ -6,8 +6,7 @@
         http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
-    <changeSet id="001-add-v5-fields-to-credential" author="fiware">
-        <tagDatabase tag="v0.0.5"/>
+    <changeSet id="001-add-v5-fields-to-credential" author="seamware">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="credential"/>
         </preConditions>
@@ -32,6 +31,9 @@
                 <constraints nullable="true"/>
             </column>
         </addColumn>
+    </changeSet>
+    <changeSet id="002-tag-v0.0.5" author="seamware">
+          <tagDatabase tag="v0.0.5"/>
     </changeSet>
 
 </databaseChangeLog>

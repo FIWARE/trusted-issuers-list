@@ -524,6 +524,48 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
         "Granting to an unknown issuer should create it, so the callers need no create-or-update branch.");
   }
 
+  @Test
+  public void updateIssuer_keepsWhatAScopeGranted() throws Exception {
+    testClient.createTrustedIssuer(
+        new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(USER_CREDENTIAL))));
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+
+    // an administrative update of the directly managed credentials
+    HttpResponse<TrustedIssuerVO> response =
+        testClient.updateIssuer(
+            ISSUER_DID,
+            new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(READER_CREDENTIAL))));
+
+    List<String> types =
+        response.body().getCredentials().stream()
+            .map(CredentialsVO::getCredentialsType)
+            .sorted()
+            .toList();
+    assertEquals(
+        List.of(OPERATOR_CREDENTIAL, READER_CREDENTIAL),
+        types,
+        "The update should replace what it manages and leave the granted credential alone.");
+    assertEquals(
+        1,
+        scopedCredentials(ISSUER_DID, ORDER_SCOPE).size(),
+        "The grant should still be attributed to its scope.");
+  }
+
+  @Test
+  public void deleteIssuerById_removesGrantedCredentialsAsWell() throws Exception {
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+
+    assertEquals(
+        HttpStatus.NO_CONTENT,
+        testClient.deleteIssuerById(ISSUER_DID).getStatus(),
+        "Deleting the issuer should succeed.");
+    assertTrue(
+        scopedCredentials(ISSUER_DID, ORDER_SCOPE).isEmpty(),
+        "Deleting the subject of a grant removes the grant with it.");
+  }
+
   private List<Credential> scopedCredentials(String did, String scope) {
     return credentialRepository.findByTrustedIssuerDidAndScope(did, scope);
   }

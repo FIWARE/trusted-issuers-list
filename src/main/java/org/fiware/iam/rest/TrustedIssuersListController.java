@@ -199,6 +199,19 @@ public class TrustedIssuersListController implements IssuerApi {
     }
   }
 
+  /**
+   * Replaces the credentials an issuer is managed with directly.
+   *
+   * <p>Credentials that were granted by a scope keep their own lifecycle and are <b>not</b> touched:
+   * they belong to whatever granted them, and only that grant - or the deletion of the whole issuer -
+   * may remove them. Replacing them here would let an unrelated administrative update revoke access
+   * that an order paid for.
+   *
+   * @param did the DID of the issuer
+   * @param trustedIssuerVO the issuer with the credentials it is managed with directly
+   * @return the issuer including its granted credentials, or not found if it does not exist
+   */
+  @Transactional
   @Override
   public HttpResponse<TrustedIssuerVO> updateIssuer(String did, TrustedIssuerVO trustedIssuerVO) {
     Optional<TrustedIssuer> optionalTrustedIssuer = trustedIssuerRepository.getByDid(did);
@@ -209,11 +222,17 @@ public class TrustedIssuersListController implements IssuerApi {
       throw new IllegalArgumentException("Did does not match the issuer object.");
     }
 
-    Collection<Credential> credentials = optionalTrustedIssuer.get().getCredentials();
-    credentialRepository.deleteAll(credentials);
+    List<Credential> directlyManaged =
+        optionalTrustedIssuer.get().getCredentials().stream()
+            .filter(credential -> credential.getScope() == null)
+            .toList();
+    credentialRepository.deleteAll(directlyManaged);
+    trustedIssuerRepository.update(trustedIssuerMapper.map(trustedIssuerVO));
 
-    return HttpResponse.ok(
-        trustedIssuerMapper.map(
-            trustedIssuerRepository.update(trustedIssuerMapper.map(trustedIssuerVO))));
+    return trustedIssuerRepository
+        .getByDid(did)
+        .map(trustedIssuerMapper::map)
+        .map(HttpResponse::ok)
+        .orElseGet(HttpResponse::notFound);
   }
 }

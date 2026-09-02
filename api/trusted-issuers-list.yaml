@@ -28,8 +28,12 @@ paths:
       tags:
         - issuer
       operationId: createTrustedIssuer
-      summary: Create a trusted issuer and its credentials
-      description: create trusted issuer
+      summary: Create a trusted issuer and the credentials it is managed with directly
+      description: >
+        Creates the issuer together with the credentials it is managed with directly. Those carry no
+        scope. Credentials that are granted by something - an order, for example - are created through
+        PUT /issuer/{did}/credential instead, which also creates the issuer if it does not exist yet;
+        a scope identifies a grant and therefore belongs to the grant, not to the issuer.
       requestBody:
         required: true
         content:
@@ -78,7 +82,9 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
       operationId: deleteIssuerById
-      description: Delete a single issuer
+      description: >
+        Deletes the issuer and every credential it holds, granted ones included. This is the one
+        operation that disregards grants, because it removes the subject they were granted to.
       responses:
         '204':
           description: Successfully deleted
@@ -89,7 +95,10 @@ paths:
         - issuer
       parameters:
         - $ref: '#/components/parameters/Id'
-      description: Update a single issuer
+      description: >
+        Replaces the credentials the issuer is managed with directly. Credentials granted by a scope
+        are not touched - they belong to whatever granted them, and only that grant, or the deletion
+        of the whole issuer, may remove them.
       operationId: updateIssuer
       requestBody:
         required: true

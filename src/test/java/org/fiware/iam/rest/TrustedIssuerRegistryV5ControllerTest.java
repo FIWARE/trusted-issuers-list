@@ -907,4 +907,51 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
     }
     return sb.toString();
   }
+
+  // --- the scope of a credential must not reach the registry -----------------
+
+  @Test
+  public void getIssuerAttributesV5_scopeChangesNeitherIdNorBody() throws Exception {
+    java.util.List<org.fiware.iam.til.model.CredentialsVO> credentials =
+        java.util.List.of(CredentialsVOTestExample.build().validFor(null));
+    insertionClient.createTrustedIssuer(
+        new TrustedIssuerVO().did(DID_HAPPYPETS).credentials(credentials));
+    AttributesResponseVO unscoped = testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
+    AttributeDetailsVO unscopedDetails =
+        testClient.getIssuerAttributeV5(DID_HAPPYPETS, unscoped.getItems().getFirst().getId()).body();
+
+    repository.deleteAll();
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials);
+    AttributesResponseVO scoped = testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
+    AttributeDetailsVO scopedDetails =
+        testClient.getIssuerAttributeV5(DID_HAPPYPETS, scoped.getItems().getFirst().getId()).body();
+
+    assertEquals(
+        unscoped.getItems().getFirst().getId(),
+        scoped.getItems().getFirst().getId(),
+        "The scope must not change the attribute id - clients address attributes by it.");
+    assertEquals(
+        unscopedDetails.getAttribute().getBody(),
+        scopedDetails.getAttribute().getBody(),
+        "The scope must not appear in the attribute body - the registry is world-readable.");
+  }
+
+  @Test
+  public void getIssuerAttributesV5_deduplicatesWhatTwoScopesGranted() throws Exception {
+    java.util.List<org.fiware.iam.til.model.CredentialsVO> credentials =
+        java.util.List.of(CredentialsVOTestExample.build().validFor(null));
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials);
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:second", credentials);
+
+    AttributesResponseVO attributes = testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
+
+    assertEquals(
+        1,
+        attributes.getItems().size(),
+        "Two grants of one credential must not appear as two attributes with the same id.");
+    assertEquals(1, attributes.getTotal(), "The total has to match what is listed.");
+  }
 }

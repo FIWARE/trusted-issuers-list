@@ -116,6 +116,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /issuer/{did}/credential:
+    put:
+      tags:
+        - issuer
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/Scope'
+      operationId: replaceCredentialsByScope
+      summary: Replace the credentials granted by one scope
+      description: >
+        Sets the credentials granted by the given scope to exactly the ones provided, leaving the
+        credentials of every other scope untouched. The scope is the identifier of whatever granted
+        them - a ProductOrder id, for example - so that revoking one grant cannot remove a credential
+        another grant still requires. Replacing rather than appending makes the call idempotent, which
+        matters because the callers react to notifications that are redelivered on failure. The issuer
+        is created if it does not exist yet. Credentials created through the issuer endpoints carry no
+        scope and are never touched by this operation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Credentials'
+      responses:
+        '200':
+          description: Successfully replaced the credentials of the scope.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustedIssuer'
+        '400':
+          description: No scope provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+        - issuer
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/Scope'
+      operationId: deleteCredentialsByScope
+      summary: Delete the credentials granted by one scope
+      description: >
+        Removes the credentials granted by the given scope and nothing else. The issuer itself is kept,
+        even when no credential remains, so that an issuer somebody else manages is not deleted as a
+        side effect.
+      responses:
+        '204':
+          description: Successfully deleted the credentials of the scope.
+        '400':
+          description: No scope provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: No such issuer exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
 
 components:
   parameters:
@@ -126,6 +191,17 @@ components:
       schema:
         type: string
         example: did:elsi:happypets
+    Scope:
+      name: scope
+      in: query
+      required: true
+      description: >
+        Identifies what granted the credentials, so that they can be revoked without affecting
+        credentials granted by anything else. Not part of the credential itself and never exposed
+        through the trusted-issuers-registry.
+      schema:
+        type: string
+        example: urn:ngsi-ld:product-order:5f7a1e60
     PageSize:
       name: pageSize
       in: query

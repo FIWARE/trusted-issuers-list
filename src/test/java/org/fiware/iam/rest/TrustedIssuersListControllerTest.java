@@ -28,6 +28,8 @@ import java.util.Optional;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.fiware.iam.TILMapper;
+import org.fiware.iam.repository.Credential;
+import org.fiware.iam.repository.CredentialRepository;
 import org.fiware.iam.repository.TrustedIssuerRepository;
 import org.fiware.iam.til.api.IssuerApiTestClient;
 import org.fiware.iam.til.api.IssuerApiTestSpec;
@@ -42,8 +44,16 @@ import org.junit.jupiter.params.provider.MethodSource;
 @MicronautTest
 public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
 
+  private static final String ISSUER_DID = "did:web:consumer.org";
+  private static final String ORDER_SCOPE = "urn:ngsi-ld:product-order:first";
+  private static final String OTHER_ORDER_SCOPE = "urn:ngsi-ld:product-order:second";
+  private static final String OPERATOR_CREDENTIAL = "OperatorCredential";
+  private static final String USER_CREDENTIAL = "UserCredential";
+  private static final String READER_CREDENTIAL = "ReaderCredential";
+
   public final IssuerApiTestClient testClient;
   public final TrustedIssuerRepository repository;
+  public final CredentialRepository credentialRepository;
   public final TILMapper trustedIssuerMapper;
 
   private TrustedIssuerVO issuerToCreate;
@@ -354,6 +364,174 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
             new UpdatePair(
                 TrustedIssuerVOTestExample.build(),
                 TrustedIssuerVOTestExample.build().did("did:web:somethingelse"))));
+  }
+
+  // --- credentials scoped to whatever granted them ---------------------------
+
+  @Test
+  @Override
+  public void replaceCredentialsByScope200() throws Exception {
+    HttpResponse<TrustedIssuerVO> response =
+        testClient.replaceCredentialsByScope(
+            ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+
+    assertEquals(HttpStatus.OK, response.getStatus(), "The credentials should have been granted.");
+    assertEquals(
+        1,
+        response.body().getCredentials().size(),
+        "The granted credential should be returned with the issuer.");
+    assertEquals(
+        1,
+        scopedCredentials(ISSUER_DID, ORDER_SCOPE).size(),
+        "The credential should be persisted with its scope.");
+  }
+
+  @Test
+  @Override
+  public void replaceCredentialsByScope400() throws Exception {
+    try {
+      testClient.replaceCredentialsByScope(ISSUER_DID, "", List.of(credential(OPERATOR_CREDENTIAL)));
+    } catch (HttpClientResponseException e) {
+      assertEquals(
+          HttpStatus.BAD_REQUEST, e.getStatus(), "A grant without a scope should be rejected.");
+      return;
+    }
+    fail("A grant without a scope should be rejected.");
+  }
+
+  @Test
+  @Override
+  public void deleteCredentialsByScope204() throws Exception {
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+
+    HttpResponse<?> response = testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE);
+
+    assertEquals(HttpStatus.NO_CONTENT, response.getStatus(), "The revocation should succeed.");
+    assertTrue(
+        scopedCredentials(ISSUER_DID, ORDER_SCOPE).isEmpty(), "The credential should be gone.");
+    assertTrue(
+        repository.getByDid(ISSUER_DID).isPresent(),
+        "The issuer itself should survive a revocation - somebody else may manage it.");
+  }
+
+  @Test
+  @Override
+  public void deleteCredentialsByScope404() throws Exception {
+    HttpResponse<?> response =
+        testClient.deleteCredentialsByScope("did:web:nonexistent.org", ORDER_SCOPE);
+
+    assertEquals(HttpStatus.NOT_FOUND, response.getStatus(), "There is nothing to revoke.");
+  }
+
+  @Test
+  @Override
+  public void deleteCredentialsByScope400() throws Exception {
+    try {
+      testClient.deleteCredentialsByScope(ISSUER_DID, "");
+    } catch (HttpClientResponseException e) {
+      assertEquals(
+          HttpStatus.BAD_REQUEST,
+          e.getStatus(),
+          "A revocation without a scope should be rejected rather than revoking everything.");
+      return;
+    }
+    fail("A revocation without a scope should be rejected.");
+  }
+
+  @Test
+  public void replaceCredentialsByScope_isIdempotent() throws Exception {
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+    HttpResponse<TrustedIssuerVO> response =
+        testClient.replaceCredentialsByScope(
+            ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+
+    assertEquals(
+        1,
+        response.body().getCredentials().size(),
+        "Granting the same thing twice - as a redelivered notification does - should not accumulate.");
+  }
+
+  @Test
+  public void replaceCredentialsByScope_replacesOnlyItsOwnScope() throws Exception {
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, OTHER_ORDER_SCOPE, List.of(credential(USER_CREDENTIAL)));
+
+    HttpResponse<TrustedIssuerVO> response =
+        testClient.replaceCredentialsByScope(
+            ISSUER_DID, ORDER_SCOPE, List.of(credential(READER_CREDENTIAL)));
+
+    List<String> types =
+        response.body().getCredentials().stream().map(CredentialsVO::getCredentialsType).sorted().toList();
+    assertEquals(
+        List.of(READER_CREDENTIAL, USER_CREDENTIAL),
+        types,
+        "Replacing one scope should leave the other scope's grant untouched.");
+  }
+
+  @Test
+  public void deleteCredentialsByScope_keepsWhatAnotherScopeGranted() throws Exception {
+    // both orders grant the very same credential - the case that used to revoke both at once
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, OTHER_ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+
+    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE);
+
+    TrustedIssuerVO issuer = testClient.getIssuer(ISSUER_DID).body();
+    assertEquals(
+        1,
+        issuer.getCredentials().size(),
+        "The other order still requires that credential, so it has to survive.");
+    assertEquals(
+        1,
+        scopedCredentials(ISSUER_DID, OTHER_ORDER_SCOPE).size(),
+        "The surviving credential should still belong to the other scope.");
+  }
+
+  @Test
+  public void deleteCredentialsByScope_keepsUnscopedCredentials() throws Exception {
+    // a credential managed directly through the issuer endpoints carries no scope
+    testClient.createTrustedIssuer(
+        new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(USER_CREDENTIAL))));
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+
+    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE);
+
+    TrustedIssuerVO issuer = testClient.getIssuer(ISSUER_DID).body();
+    assertEquals(
+        List.of(USER_CREDENTIAL),
+        issuer.getCredentials().stream().map(CredentialsVO::getCredentialsType).toList(),
+        "A manually managed credential must not be removed by a scoped revocation.");
+  }
+
+  @Test
+  public void replaceCredentialsByScope_createsTheIssuerIfUnknown() throws Exception {
+    assertTrue(repository.getByDid(ISSUER_DID).isEmpty(), "The issuer should not exist yet.");
+
+    HttpResponse<TrustedIssuerVO> response =
+        testClient.replaceCredentialsByScope(
+            ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+
+    assertEquals(HttpStatus.OK, response.getStatus());
+    assertTrue(
+        repository.getByDid(ISSUER_DID).isPresent(),
+        "Granting to an unknown issuer should create it, so the callers need no create-or-update branch.");
+  }
+
+  private List<Credential> scopedCredentials(String did, String scope) {
+    return credentialRepository.findByTrustedIssuerDidAndScope(did, scope);
+  }
+
+  private static CredentialsVO credential(String credentialsType) {
+    return new CredentialsVO()
+        .credentialsType(credentialsType)
+        .claims(List.of(new ClaimVO().name("roles").allowedValues(List.of("OPERATOR"))));
   }
 
   record UpdatePair(TrustedIssuerVO initialIssuer, TrustedIssuerVO issuerUpdate) {}

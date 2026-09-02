@@ -236,4 +236,47 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
     }
     fail("Invalid arguments should result in a 400");
   }
+
+  // --- the scope of a credential must not reach the registry -----------------
+
+  @Test
+  public void getIssuerV4200_scopeChangesNeitherBodyNorHash() throws Exception {
+    // the very same credential, once granted through the issuer endpoint and once through a scope
+    List<org.fiware.iam.til.model.CredentialsVO> credentials =
+        List.of(CredentialsVOTestExample.build().validFor(null));
+    insertionClient.createTrustedIssuer(
+        new TrustedIssuerVO().did(DID_HAPPYPETS).credentials(credentials));
+    IssuerVO unscoped = testClient.getIssuerV4(DID_HAPPYPETS).body();
+
+    repository.deleteAll();
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials);
+    IssuerVO scoped = testClient.getIssuerV4(DID_HAPPYPETS).body();
+
+    assertEquals(
+        unscoped.getAttributes().get(0).getBody(),
+        scoped.getAttributes().get(0).getBody(),
+        "The scope must not appear in the attribute body - the registry is world-readable.");
+    assertEquals(
+        unscoped.getAttributes().get(0).getHash(),
+        scoped.getAttributes().get(0).getHash(),
+        "The scope must not change the attribute hash.");
+  }
+
+  @Test
+  public void getIssuerV4200_deduplicatesWhatTwoScopesGranted() throws Exception {
+    List<org.fiware.iam.til.model.CredentialsVO> credentials =
+        List.of(CredentialsVOTestExample.build().validFor(null));
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials);
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:second", credentials);
+
+    IssuerVO issuer = testClient.getIssuerV4(DID_HAPPYPETS).body();
+
+    assertEquals(
+        1,
+        issuer.getAttributes().size(),
+        "The registry exposes credentials, not grants - two grants of one credential are one attribute.");
+  }
 }

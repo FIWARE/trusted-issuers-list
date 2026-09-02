@@ -6,9 +6,23 @@
         http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
-    <changeSet id="001-add-scope-to-credential" author="seamware">
+    <!--
+      Replaces the changesets released with 0.9.0, which created a composite index over
+      (trusted_issuer_id, scope). MySQL rejects that index: trusted_issuer_id is varchar(768), which
+      is 3072 bytes under utf8mb4 and therefore already the whole key budget, so adding scope exceeds
+      it and the migration - and with it the startup - fails.
+
+      The changesets below carry new ids and are guarded by preconditions, so they apply cleanly on a
+      fresh database, on one where 0.9.0 added the column before failing on the index, and on one
+      where 0.9.0 succeeded (Postgres, H2).
+    -->
+
+    <changeSet id="003-add-scope-to-credential-if-missing" author="seamware">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="credential"/>
+            <not>
+                <columnExists tableName="credential" columnName="scope"/>
+            </not>
         </preConditions>
 
         <!-- Identifies what granted a credential, so that one grant can be revoked without removing
@@ -19,14 +33,25 @@
                 <constraints nullable="true"/>
             </column>
         </addColumn>
+    </changeSet>
 
-        <!-- Revocation looks credentials up by issuer and scope -->
-        <createIndex tableName="credential" indexName="idx_credential_issuer_scope">
-            <column name="trusted_issuer_id"/>
+    <changeSet id="004-index-credential-scope-if-missing" author="seamware">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="credential"/>
+            <not>
+                <indexExists tableName="credential" indexName="idx_credential_scope"/>
+            </not>
+        </preConditions>
+
+        <!-- Revocation looks credentials up by issuer and scope. Only scope is indexed here: the
+             foreign key already indexes trusted_issuer_id, and a composite index over both does not
+             fit MySQL's key length. A scope is an order id, so it is selective enough on its own. -->
+        <createIndex tableName="credential" indexName="idx_credential_scope">
             <column name="scope"/>
         </createIndex>
     </changeSet>
-    <changeSet id="002-tag-v0.0.6" author="seamware">
+
+    <changeSet id="005-tag-v0.0.6" author="seamware">
         <tagDatabase tag="v0.0.6"/>
     </changeSet>
 

@@ -19,4 +19,23 @@ package org.fiware.iam.repository;
 import io.micronaut.data.repository.PageableRepository;
 
 /** Extension of the base repository to support {@link Credential} */
-public interface CredentialRepository extends PageableRepository<Credential, Integer> {}
+public interface CredentialRepository extends PageableRepository<Credential, Integer> {
+
+  /**
+   * Find the credentials an issuer was granted by one scope.
+   *
+   * @param did the DID of the issuer
+   * @param scope what granted the credentials
+   * @return the credentials granted by that scope, empty if none were
+   */
+  java.util.List<Credential> findByTrustedIssuerDidAndScope(String did, String scope);
+
+  /**
+   * Delete the credentials an issuer was granted by one scope, leaving every other credential -
+   * including the unscoped ones - in place.
+   *
+   * @param did the DID of the issuer
+   * @param scope what granted the credentials
+   */
+  void deleteByTrustedIssuerDidAndScope(String did, String scope);
+}

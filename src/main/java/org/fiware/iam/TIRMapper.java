@@ -65,8 +65,10 @@ public interface TIRMapper {
   default IssuerVO map(TrustedIssuer trustedIssuer) {
     IssuerVO issuerVO = new IssuerVO().did(trustedIssuer.getDid());
 
+    // several scopes may grant the very same credential; the registry exposes credentials, not
+    // grants, so identical attributes are collapsed into one
     List<IssuerAttributeVO> issuerAttributeVOS =
-        trustedIssuer.getCredentials().stream().map(this::mapToAttribute).toList();
+        trustedIssuer.getCredentials().stream().map(this::mapToAttribute).distinct().toList();
     issuerVO.attributes(issuerAttributeVOS);
     return issuerVO;
   }

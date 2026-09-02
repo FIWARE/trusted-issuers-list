@@ -27,10 +27,12 @@ import io.micronaut.http.context.ServerRequestContext;
 import io.micronaut.http.uri.UriBuilder;
 import java.net.URI;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.fiware.iam.TIRv5Mapper;
@@ -224,12 +226,7 @@ public class TrustedIssuerRegistryV5Controller implements Tirv5Api {
     validatePageSize(pageSize);
     int pageNumber = parsePageAfter(pageAfter);
 
-    List<Credential> allCredentials =
-        issuer.getCredentials() != null
-            ? issuer.getCredentials().stream()
-                .sorted(Comparator.comparing(Credential::getId))
-                .toList()
-            : List.of();
+    List<Credential> allCredentials = distinctAttributes(issuer);
     int total = allCredentials.size();
     int fromIndex = Math.min(pageNumber * pageSize, total);
     int toIndex = Math.min(fromIndex + pageSize, total);
@@ -418,6 +415,28 @@ public class TrustedIssuerRegistryV5Controller implements Tirv5Api {
    * @param attributeId the hex-encoded SHA-256 hash to match
    * @return the matching credential, or empty if not found
    */
+  /**
+   * The credentials of an issuer, reduced to one per attribute.
+   *
+   * <p>An attribute is identified by the hash of its body, and several scopes may grant the very
+   * same credential - the registry exposes credentials rather than grants, so those rows have to
+   * collapse into one attribute. Without this, a listing would report the same attribute id twice
+   * and count it twice, while a fetch by that id could only ever return one of them.
+   *
+   * @param issuer the issuer to project
+   * @return its credentials, ordered by id, one per attribute
+   */
+  private List<Credential> distinctAttributes(TrustedIssuer issuer) {
+    if (issuer.getCredentials() == null) {
+      return List.of();
+    }
+    Set<String> seenAttributeIds = new HashSet<>();
+    return issuer.getCredentials().stream()
+        .sorted(Comparator.comparing(Credential::getId))
+        .filter(credential -> seenAttributeIds.add(tirV5Mapper.computeAttributeId(credential)))
+        .toList();
+  }
+
   private Optional<Credential> findCredentialByAttributeId(
       TrustedIssuer issuer, String attributeId) {
     if (issuer.getCredentials() == null) {
@@ -502,9 +521,7 @@ public class TrustedIssuerRegistryV5Controller implements Tirv5Api {
     Map<String, Object> response = new LinkedHashMap<>();
     response.put(JSON_KEY_DID, issuer.getDid());
     List<AttributeVO> attributes =
-        issuer.getCredentials() != null
-            ? issuer.getCredentials().stream().map(tirV5Mapper::credentialToAttributeVO).toList()
-            : List.of();
+        distinctAttributes(issuer).stream().map(tirV5Mapper::credentialToAttributeVO).toList();
     response.put(JSON_KEY_ATTRIBUTES, attributes);
     return response;
   }

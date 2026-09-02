@@ -149,7 +149,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
           TrustedIssuerVOTestExample.build().did(String.format(DID_TEMPLATE, i));
       assertEquals(
           HttpStatus.CREATED,
-          insertionClient.createTrustedIssuer(issuer).getStatus(),
+          insertionClient.createTrustedIssuer(issuer, null).getStatus(),
           "The issuer should have been created.");
     }
 
@@ -180,7 +180,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
     for (int i = 0; i < 5; i++) {
       TrustedIssuerVO issuer =
           TrustedIssuerVOTestExample.build().did(String.format(DID_TEMPLATE, "issuer-" + i));
-      insertionClient.createTrustedIssuer(issuer);
+      insertionClient.createTrustedIssuer(issuer, null);
     }
 
     HttpResponse<IssuersResponseVO> response = testClient.getIssuersV5(3, null);
@@ -195,7 +195,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   /** Tests that each issuer entry has both did and href fields populated. */
   @Test
   public void getIssuersV5200EntryStructure() throws Exception {
-    insertionClient.createTrustedIssuer(TrustedIssuerVOTestExample.build());
+    insertionClient.createTrustedIssuer(TrustedIssuerVOTestExample.build(), null);
 
     HttpResponse<IssuersResponseVO> response = testClient.getIssuersV5(null, null);
     assertEquals(HttpStatus.OK, response.getStatus());
@@ -235,7 +235,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   public void getIssuerV5200() throws Exception {
     // Latest version: issuer with no credentials → hasAttributes=false
     TrustedIssuerVO issuer = TrustedIssuerVOTestExample.build();
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     HttpResponse<Object> response = testClient.getIssuerV5(DID_HAPPYPETS, null);
     assertEquals(HttpStatus.OK, response.getStatus());
@@ -258,7 +258,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   public void getIssuerV5200LatestWithCredentials() throws Exception {
     TrustedIssuerVO issuer =
         TrustedIssuerVOTestExample.build().credentials(List.of(CredentialsVOTestExample.build()));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     HttpResponse<Object> response = testClient.getIssuerV5(DID_HAPPYPETS, VERSION_LATEST);
     assertEquals(HttpStatus.OK, response.getStatus());
@@ -277,7 +277,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   public void getIssuerV5200Deprecated() throws Exception {
     TrustedIssuerVO issuer =
         TrustedIssuerVOTestExample.build().credentials(List.of(CredentialsVOTestExample.build()));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     HttpResponse<Object> response = testClient.getIssuerV5(DID_HAPPYPETS, VERSION_DEPRECATED);
     assertEquals(HttpStatus.OK, response.getStatus());
@@ -304,7 +304,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   @Test
   public void getIssuerV5200DeprecatedNoCredentials() throws Exception {
     TrustedIssuerVO issuer = TrustedIssuerVOTestExample.build();
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     HttpResponse<Object> response = testClient.getIssuerV5(DID_HAPPYPETS, VERSION_DEPRECATED);
     assertEquals(HttpStatus.OK, response.getStatus());
@@ -361,7 +361,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   public void getIssuerAttributesV5200() throws Exception {
     // Issuer with no credentials → empty attributes list
     TrustedIssuerVO issuer = TrustedIssuerVOTestExample.build();
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     HttpResponse<AttributesResponseVO> response =
         testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null);
@@ -377,7 +377,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
     CredentialsVO cred1 = CredentialsVOTestExample.build().credentialsType("TypeA");
     CredentialsVO cred2 = CredentialsVOTestExample.build().credentialsType("TypeB");
     TrustedIssuerVO issuer = TrustedIssuerVOTestExample.build().credentials(List.of(cred1, cred2));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     HttpResponse<AttributesResponseVO> response =
         testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null);
@@ -409,7 +409,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
     CredentialsVO cred3 = CredentialsVOTestExample.build().credentialsType("TypeC");
     TrustedIssuerVO issuer =
         TrustedIssuerVOTestExample.build().credentials(List.of(cred1, cred2, cred3));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     // Page 0 with size 2
     HttpResponse<AttributesResponseVO> response =
@@ -470,7 +470,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
     CredentialsVO credential =
         CredentialsVOTestExample.build().claims(List.of(ClaimVOTestExample.build()));
     TrustedIssuerVO issuer = TrustedIssuerVOTestExample.build().credentials(List.of(credential));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     // First, get the attribute ID from the attributes list
     String attributeId = getFirstAttributeId(DID_HAPPYPETS);
@@ -506,7 +506,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   public void getIssuerAttributeV5200DefaultFields() throws Exception {
     TrustedIssuerVO issuer =
         TrustedIssuerVOTestExample.build().credentials(List.of(CredentialsVOTestExample.build()));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     String attributeId = getFirstAttributeId(DID_HAPPYPETS);
 
@@ -551,7 +551,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   public void getIssuerAttributeV5404NonExistentAttribute() throws Exception {
     TrustedIssuerVO issuer =
         TrustedIssuerVOTestExample.build().credentials(List.of(CredentialsVOTestExample.build()));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     HttpResponse<AttributeDetailsVO> response =
         testClient.getIssuerAttributeV5(DID_HAPPYPETS, NON_EXISTENT_ATTRIBUTE_ID);
@@ -570,7 +570,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   public void getIssuerAttributeRevisionsV5200() throws Exception {
     TrustedIssuerVO issuer =
         TrustedIssuerVOTestExample.build().credentials(List.of(CredentialsVOTestExample.build()));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     String attributeId = getFirstAttributeId(DID_HAPPYPETS);
 
@@ -626,7 +626,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   public void getIssuerAttributeRevisionsV5404NonExistentAttribute() throws Exception {
     TrustedIssuerVO issuer =
         TrustedIssuerVOTestExample.build().credentials(List.of(CredentialsVOTestExample.build()));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     HttpResponse<RevisionsResponseVO> response =
         testClient.getIssuerAttributeRevisionsV5(
@@ -647,7 +647,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   public void getIssuerAttributeRevisionV5200() throws Exception {
     TrustedIssuerVO issuer =
         TrustedIssuerVOTestExample.build().credentials(List.of(CredentialsVOTestExample.build()));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     String attributeId = getFirstAttributeId(DID_HAPPYPETS);
     String revisionId = getFirstRevisionId(DID_HAPPYPETS, attributeId);
@@ -699,7 +699,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   public void getIssuerAttributeRevisionV5404NonExistentRevision() throws Exception {
     TrustedIssuerVO issuer =
         TrustedIssuerVOTestExample.build().credentials(List.of(CredentialsVOTestExample.build()));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     String attributeId = getFirstAttributeId(DID_HAPPYPETS);
 
@@ -717,7 +717,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   public void getIssuerAttributeRevisionV5404NonExistentAttribute() throws Exception {
     TrustedIssuerVO issuer =
         TrustedIssuerVOTestExample.build().credentials(List.of(CredentialsVOTestExample.build()));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     HttpResponse<AttributeDetailsVO> response =
         testClient.getIssuerAttributeRevisionV5(
@@ -743,7 +743,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
             .credentials(
                 List.of(
                     CredentialsVOTestExample.build().claims(List.of(ClaimVOTestExample.build()))));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     // Get attribute ID from list
     String attributeId = getFirstAttributeId(DID_HAPPYPETS);
@@ -771,7 +771,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   public void fullNavigationChain() throws Exception {
     TrustedIssuerVO issuer =
         TrustedIssuerVOTestExample.build().credentials(List.of(CredentialsVOTestExample.build()));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     // Step 1: List issuers
     HttpResponse<IssuersResponseVO> issuersResponse = testClient.getIssuersV5(null, null);
@@ -823,7 +823,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   public void issuerVisibleInBothV4AndV5() throws Exception {
     TrustedIssuerVO issuer =
         TrustedIssuerVOTestExample.build().credentials(List.of(CredentialsVOTestExample.build()));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer).getStatus());
+    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer, null).getStatus());
 
     // Visible in v5
     HttpResponse<Object> v5Response = testClient.getIssuerV5(DID_HAPPYPETS, null);
@@ -846,8 +846,10 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
         TrustedIssuerVOTestExample.build()
             .did("did:elsi:issuer2")
             .credentials(List.of(CredentialsVOTestExample.build().credentialsType("TypeB")));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer1).getStatus());
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer2).getStatus());
+    assertEquals(
+        HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer1, null).getStatus());
+    assertEquals(
+        HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer2, null).getStatus());
 
     String attrId1 = getFirstAttributeId("did:elsi:issuer1");
     String attrId2 = getFirstAttributeId("did:elsi:issuer2");
@@ -906,5 +908,57 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
       sb.append(String.format(HEX_FORMAT, b));
     }
     return sb.toString();
+  }
+
+  // --- the scope of a credential must not reach the registry -----------------
+
+  @Test
+  public void getIssuerAttributesV5_scopeChangesNeitherIdNorBody() throws Exception {
+    java.util.List<org.fiware.iam.til.model.CredentialsVO> credentials =
+        java.util.List.of(CredentialsVOTestExample.build().validFor(null));
+    insertionClient.createTrustedIssuer(
+        new TrustedIssuerVO().did(DID_HAPPYPETS).credentials(credentials), null);
+    AttributesResponseVO unscoped =
+        testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
+    AttributeDetailsVO unscopedDetails =
+        testClient
+            .getIssuerAttributeV5(DID_HAPPYPETS, unscoped.getItems().getFirst().getId())
+            .body();
+
+    repository.deleteAll();
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials);
+    AttributesResponseVO scoped =
+        testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
+    AttributeDetailsVO scopedDetails =
+        testClient.getIssuerAttributeV5(DID_HAPPYPETS, scoped.getItems().getFirst().getId()).body();
+
+    assertEquals(
+        unscoped.getItems().getFirst().getId(),
+        scoped.getItems().getFirst().getId(),
+        "The scope must not change the attribute id - clients address attributes by it.");
+    assertEquals(
+        unscopedDetails.getAttribute().getBody(),
+        scopedDetails.getAttribute().getBody(),
+        "The scope must not appear in the attribute body - the registry is world-readable.");
+  }
+
+  @Test
+  public void getIssuerAttributesV5_deduplicatesWhatTwoScopesGranted() throws Exception {
+    java.util.List<org.fiware.iam.til.model.CredentialsVO> credentials =
+        java.util.List.of(CredentialsVOTestExample.build().validFor(null));
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials);
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:second", credentials);
+
+    AttributesResponseVO attributes =
+        testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
+
+    assertEquals(
+        1,
+        attributes.getItems().size(),
+        "Two grants of one credential must not appear as two attributes with the same id.");
+    assertEquals(1, attributes.getTotal(), "The total has to match what is listed.");
   }
 }

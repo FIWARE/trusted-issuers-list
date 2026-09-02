@@ -62,6 +62,20 @@ public class Credential {
   /** DID of the Root Trusted Accreditation Organization in the trust chain. */
   @Nullable private String rootTao;
 
+  /**
+   * Identifies what granted this credential - a ProductOrder id, for example - so that revoking one
+   * grant cannot remove a credential another grant still requires.
+   *
+   * <p>Deliberately absent from the API models: the trusted-issuers-registry serializes {@code
+   * CredentialsVO} into its attribute bodies and, in v5, derives attribute ids from those bytes, so
+   * a scope in that model would leak into a world-readable registry and change every attribute id.
+   * It is set through the {@code /issuer/{did}/credential} endpoints instead.
+   *
+   * <p>{@code null} marks a credential that is managed directly through the issuer endpoints. Such
+   * a credential is never touched by a scoped operation.
+   */
+  @Nullable private String scope;
+
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "trusted_issuer_id")
   private TrustedIssuer trustedIssuer;

@@ -28,12 +28,15 @@ paths:
       tags:
         - issuer
       operationId: createTrustedIssuer
-      summary: Create a trusted issuer and the credentials it is managed with directly
+      summary: Create a trusted issuer and its credentials
       description: >
-        Creates the issuer together with the credentials it is managed with directly. Those carry no
-        scope. Credentials that are granted by something - an order, for example - are created through
-        PUT /issuer/{did}/credential instead, which also creates the issuer if it does not exist yet;
-        a scope identifies a grant and therefore belongs to the grant, not to the issuer.
+        Creates the issuer together with its credentials. When a scope is given, every credential in
+        the body is attributed to it and can be revoked through it later - an issuer is usually
+        created because something granted it a credential in the first place. Without a scope the
+        credentials are managed directly through the issuer endpoints and no revocation will ever
+        remove them, so pass the scope whenever the credentials come from a grant.
+      parameters:
+        - $ref: '#/components/parameters/OptionalScope'
       requestBody:
         required: true
         content:
@@ -200,6 +203,18 @@ components:
       schema:
         type: string
         example: did:elsi:happypets
+    OptionalScope:
+      name: scope
+      in: query
+      required: false
+      description: >
+        Identifies what granted the credentials, so that they can be revoked without affecting
+        credentials granted by anything else. When omitted, the credentials are managed directly
+        through the issuer endpoints and no grant can revoke them. Not part of the credential itself
+        and never exposed through the trusted-issuers-registry.
+      schema:
+        type: string
+        example: urn:ngsi-ld:product-order:5f7a1e60
     Scope:
       name: scope
       in: query

@@ -67,7 +67,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
 
   @Override
   public void createTrustedIssuer201() throws Exception {
-    HttpResponse<?> creationResponse = testClient.createTrustedIssuer(issuerToCreate);
+    HttpResponse<?> creationResponse = testClient.createTrustedIssuer(issuerToCreate, null);
     assertEquals(
         HttpStatus.CREATED, creationResponse.getStatus(), "The issuer should have been created.");
     assertTrue(
@@ -133,7 +133,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Test
   public void createTrustedIssuer400() throws Exception {
     try {
-      testClient.createTrustedIssuer(TrustedIssuerVOTestExample.build().did(null));
+      testClient.createTrustedIssuer(TrustedIssuerVOTestExample.build().did(null), null);
     } catch (HttpClientResponseException e) {
       assertEquals(
           HttpStatus.BAD_REQUEST, e.getStatus(), "The issuer should not have been created.");
@@ -148,10 +148,10 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     TrustedIssuerVO theIssuer = TrustedIssuerVOTestExample.build();
     assertEquals(
         HttpStatus.CREATED,
-        testClient.createTrustedIssuer(theIssuer).getStatus(),
+        testClient.createTrustedIssuer(theIssuer, null).getStatus(),
         "The issuer should initially be created.");
     try {
-      testClient.createTrustedIssuer(theIssuer);
+      testClient.createTrustedIssuer(theIssuer, null);
     } catch (HttpClientResponseException e) {
       assertEquals(HttpStatus.CONFLICT, e.getStatus(), "The issuer should not have been created.");
       return;
@@ -165,7 +165,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     TrustedIssuerVO theIssuer = TrustedIssuerVOTestExample.build();
     assertEquals(
         HttpStatus.CREATED,
-        testClient.createTrustedIssuer(theIssuer).getStatus(),
+        testClient.createTrustedIssuer(theIssuer, null).getStatus(),
         "The issuer should initially be created.");
     HttpResponse<?> deletionResponse = testClient.deleteIssuerById(theIssuer.getDid());
     assertEquals(
@@ -191,7 +191,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     TrustedIssuerVO theIssuer = TrustedIssuerVOTestExample.build();
     assertEquals(
         HttpStatus.CREATED,
-        testClient.createTrustedIssuer(theIssuer).getStatus(),
+        testClient.createTrustedIssuer(theIssuer, null).getStatus(),
         "The issuer should initially be created.");
     HttpResponse<?> getResponse = testClient.getIssuer(theIssuer.getDid());
     assertEquals(HttpStatus.OK, getResponse.getStatus(), "The retrieval request should succeed.");
@@ -212,7 +212,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     for (int i = 10; i < 30; i++) {
       TrustedIssuerVO issuer =
           TrustedIssuerVOTestExample.build().did(String.format("did:elsi:%s", i));
-      testClient.createTrustedIssuer(issuer);
+      testClient.createTrustedIssuer(issuer, null);
       issuers.add(issuer);
     }
 
@@ -272,7 +272,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void updateIssuer200() throws Exception {
     assertEquals(
         HttpStatus.CREATED,
-        testClient.createTrustedIssuer(issuerUpdate.initialIssuer).getStatus(),
+        testClient.createTrustedIssuer(issuerUpdate.initialIssuer, null).getStatus(),
         "The issuer should initially be created.");
     HttpResponse<?> updateResponse =
         testClient.updateIssuer(issuerUpdate.issuerUpdate.getDid(), issuerUpdate.issuerUpdate);
@@ -334,7 +334,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void updateIssuer400() throws Exception {
     assertEquals(
         HttpStatus.CREATED,
-        testClient.createTrustedIssuer(issuerUpdate.initialIssuer).getStatus(),
+        testClient.createTrustedIssuer(issuerUpdate.initialIssuer, null).getStatus(),
         "The issuer should initially be created.");
     try {
       testClient.updateIssuer(didToUpdate, issuerUpdate.issuerUpdate);
@@ -497,7 +497,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void deleteCredentialsByScope_keepsUnscopedCredentials() throws Exception {
     // a credential managed directly through the issuer endpoints carries no scope
     testClient.createTrustedIssuer(
-        new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(USER_CREDENTIAL))));
+        new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(USER_CREDENTIAL))), null);
     testClient.replaceCredentialsByScope(
         ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
 
@@ -525,9 +525,76 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   }
 
   @Test
+  public void createTrustedIssuer_attributesTheCredentialsToTheScope() throws Exception {
+    // an issuer is usually created because something granted it a credential in the first place
+    HttpResponse<?> response =
+        testClient.createTrustedIssuer(
+            new TrustedIssuerVO()
+                .did(ISSUER_DID)
+                .credentials(List.of(credential(OPERATOR_CREDENTIAL))),
+            ORDER_SCOPE);
+
+    assertEquals(HttpStatus.CREATED, response.getStatus(), "The issuer should have been created.");
+    assertEquals(
+        1,
+        scopedCredentials(ISSUER_DID, ORDER_SCOPE).size(),
+        "The credentials the issuer was created with should belong to the granting scope.");
+  }
+
+  @Test
+  public void createTrustedIssuer_scopedCredentialsAreRevocable() throws Exception {
+    testClient.createTrustedIssuer(
+        new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(OPERATOR_CREDENTIAL))),
+        ORDER_SCOPE);
+
+    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE);
+
+    TrustedIssuerVO issuer = testClient.getIssuer(ISSUER_DID).body();
+    assertTrue(
+        issuer.getCredentials() == null || issuer.getCredentials().isEmpty(),
+        "A credential created together with the issuer has to be revocable through its scope - "
+            + "without one it would grant access no revocation can ever take back.");
+  }
+
+  @Test
+  public void createTrustedIssuer_withoutScopeStaysDirectlyManaged() throws Exception {
+    testClient.createTrustedIssuer(
+        new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(OPERATOR_CREDENTIAL))),
+        null);
+
+    assertTrue(
+        scopedCredentials(ISSUER_DID, ORDER_SCOPE).isEmpty(),
+        "Without a scope the credentials belong to no grant.");
+    HttpResponse<TrustedIssuerVO> updated =
+        testClient.updateIssuer(
+            ISSUER_DID,
+            new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(READER_CREDENTIAL))));
+    assertEquals(
+        List.of(READER_CREDENTIAL),
+        updated.body().getCredentials().stream().map(CredentialsVO::getCredentialsType).toList(),
+        "Directly managed credentials stay replaceable through the issuer endpoint.");
+  }
+
+  @Test
+  public void createTrustedIssuer_blankScopeIsRejected() throws Exception {
+    try {
+      testClient.createTrustedIssuer(
+          new TrustedIssuerVO()
+              .did(ISSUER_DID)
+              .credentials(List.of(credential(OPERATOR_CREDENTIAL))),
+          "");
+    } catch (HttpClientResponseException e) {
+      assertEquals(
+          HttpStatus.BAD_REQUEST, e.getStatus(), "A grant without a scope should be rejected.");
+      return;
+    }
+    fail("A grant without a scope should be rejected.");
+  }
+
+  @Test
   public void updateIssuer_keepsWhatAScopeGranted() throws Exception {
     testClient.createTrustedIssuer(
-        new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(USER_CREDENTIAL))));
+        new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(USER_CREDENTIAL))), null);
     testClient.replaceCredentialsByScope(
         ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
 

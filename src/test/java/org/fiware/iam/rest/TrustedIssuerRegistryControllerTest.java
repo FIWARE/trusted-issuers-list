@@ -88,7 +88,7 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
   public void getIssuerV4200(TrustedIssuerVO trustedIssuer) throws Exception {
     assertEquals(
         HttpStatus.CREATED,
-        insertionClient.createTrustedIssuer(trustedIssuer).getStatus(),
+        insertionClient.createTrustedIssuer(trustedIssuer, null).getStatus(),
         "The issuer should have been initially created.");
     storedIssuer = trustedIssuer;
     getIssuerV4200();
@@ -173,7 +173,7 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
     for (int i = 10; i < 30; i++) {
       TrustedIssuerVO issuer =
           TrustedIssuerVOTestExample.build().did(String.format("did:elsi:%s", i));
-      insertionClient.createTrustedIssuer(issuer);
+      insertionClient.createTrustedIssuer(issuer, null);
       issuers.add(issuer);
     }
     HttpResponse<IssuersResponseVO> issuersResponse = testClient.getIssuersV4(null, null);
@@ -245,7 +245,7 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
     List<org.fiware.iam.til.model.CredentialsVO> credentials =
         List.of(CredentialsVOTestExample.build().validFor(null));
     insertionClient.createTrustedIssuer(
-        new TrustedIssuerVO().did(DID_HAPPYPETS).credentials(credentials));
+        new TrustedIssuerVO().did(DID_HAPPYPETS).credentials(credentials), null);
     IssuerVO unscoped = testClient.getIssuerV4(DID_HAPPYPETS).body();
 
     repository.deleteAll();

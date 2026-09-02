@@ -92,14 +92,33 @@ public class TrustedIssuersListController implements IssuerApi {
             .items(dids));
   }
 
+  /**
+   * Creates an issuer together with its credentials.
+   *
+   * <p>An issuer is usually created because something granted it a credential in the first place, so
+   * the scope of that grant can be passed along and the credentials are attributed to it. Without a
+   * scope the credentials are managed directly through the issuer endpoints, which means no
+   * revocation will ever remove them - so a caller acting on behalf of a grant has to pass one.
+   *
+   * @param trustedIssuerVO the issuer and the credentials to create it with
+   * @param scope what grants those credentials, or {@code null} if they are managed directly
+   * @return created, with the location of the issuer in the registry
+   */
   @Transactional
   @Override
-  public HttpResponse<Object> createTrustedIssuer(TrustedIssuerVO trustedIssuerVO) {
+  public HttpResponse<Object> createTrustedIssuer(
+      TrustedIssuerVO trustedIssuerVO, @Nullable String scope) {
     if (trustedIssuerRepository.existsById(trustedIssuerVO.getDid())) {
       throw new ConflictException("Issuer already exists.", trustedIssuerVO.getDid());
     }
-    TrustedIssuer persistedIssuer =
-        trustedIssuerRepository.save(trustedIssuerMapper.map(trustedIssuerVO));
+    TrustedIssuer trustedIssuer = trustedIssuerMapper.map(trustedIssuerVO);
+    if (scope != null) {
+      requireScope(scope);
+      Optional.ofNullable(trustedIssuer.getCredentials())
+          .orElseGet(List::of)
+          .forEach(credential -> credential.setScope(scope));
+    }
+    TrustedIssuer persistedIssuer = trustedIssuerRepository.save(trustedIssuer);
     return HttpResponse.created(URI.create(String.format(HREF_TEMPLATE, persistedIssuer.getDid())));
   }
 

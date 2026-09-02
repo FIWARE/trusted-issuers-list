@@ -88,7 +88,7 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
   public void getIssuerV4200(TrustedIssuerVO trustedIssuer) throws Exception {
     assertEquals(
         HttpStatus.CREATED,
-        insertionClient.createTrustedIssuer(trustedIssuer).getStatus(),
+        insertionClient.createTrustedIssuer(trustedIssuer, null).getStatus(),
         "The issuer should have been initially created.");
     storedIssuer = trustedIssuer;
     getIssuerV4200();
@@ -173,7 +173,7 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
     for (int i = 10; i < 30; i++) {
       TrustedIssuerVO issuer =
           TrustedIssuerVOTestExample.build().did(String.format("did:elsi:%s", i));
-      insertionClient.createTrustedIssuer(issuer);
+      insertionClient.createTrustedIssuer(issuer, null);
       issuers.add(issuer);
     }
     HttpResponse<IssuersResponseVO> issuersResponse = testClient.getIssuersV4(null, null);
@@ -235,5 +235,48 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
       return;
     }
     fail("Invalid arguments should result in a 400");
+  }
+
+  // --- the scope of a credential must not reach the registry -----------------
+
+  @Test
+  public void getIssuerV4200_scopeChangesNeitherBodyNorHash() throws Exception {
+    // the very same credential, once granted through the issuer endpoint and once through a scope
+    List<org.fiware.iam.til.model.CredentialsVO> credentials =
+        List.of(CredentialsVOTestExample.build().validFor(null));
+    insertionClient.createTrustedIssuer(
+        new TrustedIssuerVO().did(DID_HAPPYPETS).credentials(credentials), null);
+    IssuerVO unscoped = testClient.getIssuerV4(DID_HAPPYPETS).body();
+
+    repository.deleteAll();
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials);
+    IssuerVO scoped = testClient.getIssuerV4(DID_HAPPYPETS).body();
+
+    assertEquals(
+        unscoped.getAttributes().get(0).getBody(),
+        scoped.getAttributes().get(0).getBody(),
+        "The scope must not appear in the attribute body - the registry is world-readable.");
+    assertEquals(
+        unscoped.getAttributes().get(0).getHash(),
+        scoped.getAttributes().get(0).getHash(),
+        "The scope must not change the attribute hash.");
+  }
+
+  @Test
+  public void getIssuerV4200_deduplicatesWhatTwoScopesGranted() throws Exception {
+    List<org.fiware.iam.til.model.CredentialsVO> credentials =
+        List.of(CredentialsVOTestExample.build().validFor(null));
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials);
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:second", credentials);
+
+    IssuerVO issuer = testClient.getIssuerV4(DID_HAPPYPETS).body();
+
+    assertEquals(
+        1,
+        issuer.getAttributes().size(),
+        "The registry exposes credentials, not grants - two grants of one credential are one attribute.");
   }
 }

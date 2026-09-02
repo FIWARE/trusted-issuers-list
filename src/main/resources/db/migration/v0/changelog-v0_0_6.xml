@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="001-add-scope-to-credential" author="seamware">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="credential"/>
+        </preConditions>
+
+        <!-- Identifies what granted a credential, so that one grant can be revoked without removing
+             a credential another grant still requires. Null for credentials managed directly through
+             the issuer endpoints. -->
+        <addColumn tableName="credential">
+            <column name="scope" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Revocation looks credentials up by issuer and scope -->
+        <createIndex tableName="credential" indexName="idx_credential_issuer_scope">
+            <column name="trusted_issuer_id"/>
+            <column name="scope"/>
+        </createIndex>
+    </changeSet>
+    <changeSet id="002-tag-v0.0.6" author="seamware">
+        <tagDatabase tag="v0.0.6"/>
+    </changeSet>
+
+</databaseChangeLog>

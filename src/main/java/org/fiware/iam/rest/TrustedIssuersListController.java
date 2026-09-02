@@ -25,7 +25,6 @@ import io.micronaut.http.HttpResponse;
 import io.micronaut.http.annotation.Controller;
 import jakarta.transaction.Transactional;
 import java.net.URI;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -95,10 +94,10 @@ public class TrustedIssuersListController implements IssuerApi {
   /**
    * Creates an issuer together with its credentials.
    *
-   * <p>An issuer is usually created because something granted it a credential in the first place, so
-   * the scope of that grant can be passed along and the credentials are attributed to it. Without a
-   * scope the credentials are managed directly through the issuer endpoints, which means no
-   * revocation will ever remove them - so a caller acting on behalf of a grant has to pass one.
+   * <p>An issuer is usually created because something granted it a credential in the first place,
+   * so the scope of that grant can be passed along and the credentials are attributed to it.
+   * Without a scope the credentials are managed directly through the issuer endpoints, which means
+   * no revocation will ever remove them - so a caller acting on behalf of a grant has to pass one.
    *
    * @param trustedIssuerVO the issuer and the credentials to create it with
    * @param scope what grants those credentials, or {@code null} if they are managed directly
@@ -146,11 +145,11 @@ public class TrustedIssuersListController implements IssuerApi {
    *
    * <p>Credentials granted by another scope, and credentials managed directly through the issuer
    * endpoints (which carry no scope), are left untouched. Replacing rather than appending makes the
-   * operation idempotent: the callers react to notifications that are redelivered on failure, so the
-   * same grant may well arrive twice.
+   * operation idempotent: the callers react to notifications that are redelivered on failure, so
+   * the same grant may well arrive twice.
    *
-   * <p>The issuer is created when it is not known yet, which spares every caller a
-   * create-or-update branch - and the race that comes with it.
+   * <p>The issuer is created when it is not known yet, which spares every caller a create-or-update
+   * branch - and the race that comes with it.
    *
    * @param did the DID of the issuer
    * @param scope what grants the credentials, e.g. a ProductOrder id
@@ -221,10 +220,10 @@ public class TrustedIssuersListController implements IssuerApi {
   /**
    * Replaces the credentials an issuer is managed with directly.
    *
-   * <p>Credentials that were granted by a scope keep their own lifecycle and are <b>not</b> touched:
-   * they belong to whatever granted them, and only that grant - or the deletion of the whole issuer -
-   * may remove them. Replacing them here would let an unrelated administrative update revoke access
-   * that an order paid for.
+   * <p>Credentials that were granted by a scope keep their own lifecycle and are <b>not</b>
+   * touched: they belong to whatever granted them, and only that grant - or the deletion of the
+   * whole issuer - may remove them. Replacing them here would let an unrelated administrative
+   * update revoke access that an order paid for.
    *
    * @param did the DID of the issuer
    * @param trustedIssuerVO the issuer with the credentials it is managed with directly

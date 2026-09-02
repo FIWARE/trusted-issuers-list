@@ -418,10 +418,10 @@ public class TrustedIssuerRegistryV5Controller implements Tirv5Api {
   /**
    * The credentials of an issuer, reduced to one per attribute.
    *
-   * <p>An attribute is identified by the hash of its body, and several scopes may grant the very same
-   * credential - the registry exposes credentials rather than grants, so those rows have to collapse
-   * into one attribute. Without this, a listing would report the same attribute id twice and count it
-   * twice, while a fetch by that id could only ever return one of them.
+   * <p>An attribute is identified by the hash of its body, and several scopes may grant the very
+   * same credential - the registry exposes credentials rather than grants, so those rows have to
+   * collapse into one attribute. Without this, a listing would report the same attribute id twice
+   * and count it twice, while a fetch by that id could only ever return one of them.
    *
    * @param issuer the issuer to project
    * @return its credentials, ordered by id, one per attribute

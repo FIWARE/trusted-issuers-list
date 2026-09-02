@@ -846,8 +846,10 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
         TrustedIssuerVOTestExample.build()
             .did("did:elsi:issuer2")
             .credentials(List.of(CredentialsVOTestExample.build().credentialsType("TypeB")));
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer1, null).getStatus());
-    assertEquals(HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer2, null).getStatus());
+    assertEquals(
+        HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer1, null).getStatus());
+    assertEquals(
+        HttpStatus.CREATED, insertionClient.createTrustedIssuer(issuer2, null).getStatus());
 
     String attrId1 = getFirstAttributeId("did:elsi:issuer1");
     String attrId2 = getFirstAttributeId("did:elsi:issuer2");
@@ -916,14 +918,18 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
         java.util.List.of(CredentialsVOTestExample.build().validFor(null));
     insertionClient.createTrustedIssuer(
         new TrustedIssuerVO().did(DID_HAPPYPETS).credentials(credentials), null);
-    AttributesResponseVO unscoped = testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
+    AttributesResponseVO unscoped =
+        testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
     AttributeDetailsVO unscopedDetails =
-        testClient.getIssuerAttributeV5(DID_HAPPYPETS, unscoped.getItems().getFirst().getId()).body();
+        testClient
+            .getIssuerAttributeV5(DID_HAPPYPETS, unscoped.getItems().getFirst().getId())
+            .body();
 
     repository.deleteAll();
     insertionClient.replaceCredentialsByScope(
         DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials);
-    AttributesResponseVO scoped = testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
+    AttributesResponseVO scoped =
+        testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
     AttributeDetailsVO scopedDetails =
         testClient.getIssuerAttributeV5(DID_HAPPYPETS, scoped.getItems().getFirst().getId()).body();
 
@@ -946,7 +952,8 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
     insertionClient.replaceCredentialsByScope(
         DID_HAPPYPETS, "urn:ngsi-ld:product-order:second", credentials);
 
-    AttributesResponseVO attributes = testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
+    AttributesResponseVO attributes =
+        testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
 
     assertEquals(
         1,

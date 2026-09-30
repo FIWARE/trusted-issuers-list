@@ -1,18 +1,48 @@
 <configuration>
 
+    <!-- the unused appender would otherwise make logback print its whole status on every start -->
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+
     <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
         <resetJUL>true</resetJUL>
     </contextListener>
 
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <!-- encoders are assigned the type
-             ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+    <!--
+        LOG_FORMAT: TEXT (default) or JSON
+        LOG_LEVEL:  root level, INFO by default. Single packages can be tuned through micronaut,
+                    e.g. LOGGER_LEVELS_ORG_FIWARE_IAM=DEBUG
+    -->
+    <appender name="TEXT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%cyan(%d{HH:mm:ss.SSS}) %gray([%thread]) %highlight(%-5level) %magenta(%logger{36}) - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <root level="INFO">
-        <appender-ref ref="STDOUT" />
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.JsonEncoder">
+            <withSequenceNumber>false</withSequenceNumber>
+            <withNanoseconds>false</withNanoseconds>
+            <withContext>false</withContext>
+            <withArguments>false</withArguments>
+            <withMessage>false</withMessage>
+            <withFormattedMessage>true</withFormattedMessage>
+        </encoder>
+    </appender>
+
+    <!--
+        One line per handled request, written by micronaut's access logger (see micronaut.server.netty.access-logger
+        in application.yaml). Kept at INFO independent of the root level, LOG_REQUESTS=false switches it off.
+    -->
+    <logger name="HTTP_ACCESS_LOGGER" level="INFO" />
+
+    <!--
+        Liquibase logs every changelog it reads and every snapshot it takes at INFO, on each start
+        (~90 lines). Only problems are of interest by default, LOG_LEVEL_LIQUIBASE=INFO shows the
+        applied change sets and the update summary again.
+    -->
+    <logger name="liquibase" level="${LOG_LEVEL_LIQUIBASE:-WARN}" />
+
+    <root level="${LOG_LEVEL:-INFO}">
+        <appender-ref ref="${LOG_FORMAT:-TEXT}" />
     </root>
 </configuration>

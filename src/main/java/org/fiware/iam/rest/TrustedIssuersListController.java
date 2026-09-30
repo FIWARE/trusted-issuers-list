@@ -25,6 +25,7 @@ import io.micronaut.http.HttpResponse;
 import io.micronaut.http.annotation.Controller;
 import jakarta.transaction.Transactional;
 import java.net.URI;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -118,6 +119,15 @@ public class TrustedIssuersListController implements IssuerApi {
           .forEach(credential -> credential.setScope(scope));
     }
     TrustedIssuer persistedIssuer = trustedIssuerRepository.save(trustedIssuer);
+    log.info(
+        "Issuer {}: created with {} credential(s){}",
+        persistedIssuer.getDid(),
+        countOf(persistedIssuer.getCredentials()),
+        scope == null ? "" : " for scope " + scope);
+    log.debug(
+        "Issuer {}: created with credential types {}",
+        persistedIssuer.getDid(),
+        typesOf(persistedIssuer.getCredentials()));
     return HttpResponse.created(URI.create(String.format(HREF_TEMPLATE, persistedIssuer.getDid())));
   }
 
@@ -125,9 +135,14 @@ public class TrustedIssuersListController implements IssuerApi {
   public HttpResponse<Object> deleteIssuerById(String did) {
     Optional<TrustedIssuer> optionalTrustedIssuer = trustedIssuerRepository.getByDid(did);
     if (!trustedIssuerRepository.existsById(did)) {
+      log.debug("Issuer {}: not deleted, it does not exist", did);
       return HttpResponse.notFound();
     }
     trustedIssuerRepository.delete(optionalTrustedIssuer.get());
+    log.info(
+        "Issuer {}: deleted together with its {} credential(s)",
+        did,
+        countOf(optionalTrustedIssuer.get().getCredentials()));
     return HttpResponse.noContent();
   }
 
@@ -162,17 +177,27 @@ public class TrustedIssuersListController implements IssuerApi {
       String did, String scope, List<CredentialsVO> credentialsVO) {
 
     requireScope(scope);
+    Optional<TrustedIssuer> existingIssuer = trustedIssuerRepository.getByDid(did);
     TrustedIssuer trustedIssuer =
-        trustedIssuerRepository
-            .getByDid(did)
-            .orElseGet(() -> trustedIssuerRepository.save(new TrustedIssuer().setDid(did)));
+        existingIssuer.orElseGet(
+            () -> trustedIssuerRepository.save(new TrustedIssuer().setDid(did)));
 
-    credentialRepository.deleteByTrustedIssuerDidAndScope(did, scope);
+    long replaced = credentialRepository.deleteByTrustedIssuerDidAndScope(did, scope);
 
-    credentialsVO.stream()
-        .map(trustedIssuerMapper::map)
-        .map(credential -> credential.setScope(scope).setTrustedIssuer(trustedIssuer))
-        .forEach(credentialRepository::save);
+    List<Credential> granted =
+        credentialsVO.stream()
+            .map(trustedIssuerMapper::map)
+            .map(credential -> credential.setScope(scope).setTrustedIssuer(trustedIssuer))
+            .map(credentialRepository::save)
+            .toList();
+    log.info(
+        "Issuer {}: scope {} grants {} credential(s), replaced {}{}",
+        did,
+        scope,
+        granted.size(),
+        replaced,
+        existingIssuer.isEmpty() ? " (issuer created)" : "");
+    log.debug("Issuer {}: scope {} grants credential types {}", did, scope, typesOf(granted));
 
     return trustedIssuerRepository
         .getByDid(did)
@@ -197,9 +222,11 @@ public class TrustedIssuersListController implements IssuerApi {
   public HttpResponse<Object> deleteCredentialsByScope(String did, String scope) {
     requireScope(scope);
     if (!trustedIssuerRepository.existsById(did)) {
+      log.debug("Issuer {}: nothing to revoke for scope {}, it does not exist", did, scope);
       return HttpResponse.notFound();
     }
-    credentialRepository.deleteByTrustedIssuerDidAndScope(did, scope);
+    long revoked = credentialRepository.deleteByTrustedIssuerDidAndScope(did, scope);
+    log.info("Issuer {}: scope {} revoked, {} credential(s) removed", did, scope, revoked);
     return HttpResponse.noContent();
   }
 
@@ -215,6 +242,28 @@ public class TrustedIssuersListController implements IssuerApi {
     if (scope == null || scope.isBlank()) {
       throw new IllegalArgumentException(NO_SCOPE_PROVIDED);
     }
+  }
+
+  /**
+   * The number of credentials, for logging.
+   *
+   * @param credentials the credentials, possibly {@code null}
+   * @return how many there are
+   */
+  private static int countOf(@Nullable Collection<Credential> credentials) {
+    return credentials == null ? 0 : credentials.size();
+  }
+
+  /**
+   * The types of the credentials, for logging.
+   *
+   * @param credentials the credentials, possibly {@code null}
+   * @return their types, in order
+   */
+  private static List<String> typesOf(@Nullable Collection<Credential> credentials) {
+    return Optional.ofNullable(credentials).orElseGet(List::of).stream()
+        .map(Credential::getCredentialsType)
+        .toList();
   }
 
   /**
@@ -234,6 +283,7 @@ public class TrustedIssuersListController implements IssuerApi {
   public HttpResponse<TrustedIssuerVO> updateIssuer(String did, TrustedIssuerVO trustedIssuerVO) {
     Optional<TrustedIssuer> optionalTrustedIssuer = trustedIssuerRepository.getByDid(did);
     if (optionalTrustedIssuer.isEmpty()) {
+      log.debug("Issuer {}: not updated, it does not exist", did);
       return HttpResponse.notFound();
     }
     if (!did.equals(trustedIssuerVO.getDid())) {
@@ -245,7 +295,17 @@ public class TrustedIssuersListController implements IssuerApi {
             .filter(credential -> credential.getScope() == null)
             .toList();
     credentialRepository.deleteAll(directlyManaged);
-    trustedIssuerRepository.update(trustedIssuerMapper.map(trustedIssuerVO));
+    TrustedIssuer updatedIssuer = trustedIssuerMapper.map(trustedIssuerVO);
+    trustedIssuerRepository.update(updatedIssuer);
+    log.info(
+        "Issuer {}: updated, {} directly managed credential(s) replaced by {}",
+        did,
+        directlyManaged.size(),
+        countOf(updatedIssuer.getCredentials()));
+    log.debug(
+        "Issuer {}: directly managed credential types now {}",
+        did,
+        typesOf(updatedIssuer.getCredentials()));
 
     return trustedIssuerRepository
         .getByDid(did)

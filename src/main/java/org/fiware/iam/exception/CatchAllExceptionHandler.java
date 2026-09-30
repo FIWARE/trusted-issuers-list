@@ -28,6 +28,9 @@ import org.fiware.iam.tir.model.ProblemDetailsVO;
 
 /**
  * Handler to catch and log all unexpected exceptions and translate them into a proper 500 response.
+ *
+ * <p>This is the only handler that logs a stack trace: every expected failure has its own handler
+ * that logs a single line with the reason.
  */
 @Produces
 @Singleton
@@ -38,10 +41,11 @@ public class CatchAllExceptionHandler
 
   @Override
   public HttpResponse<ProblemDetailsVO> handle(HttpRequest request, Exception exception) {
-    log.warn(
-        "Received unexpected exception {} for request {}.",
+    log.error(
+        "Unexpected error while handling {} {}: {}",
+        request.getMethod(),
+        request.getUri(),
         exception.getMessage(),
-        request,
         exception);
 
     return HttpResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)

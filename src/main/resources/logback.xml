@@ -4,15 +4,28 @@
         <resetJUL>true</resetJUL>
     </contextListener>
 
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <!-- encoders are assigned the type
-             ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
-        <encoder>
-            <pattern>%cyan(%d{HH:mm:ss.SSS}) %gray([%thread]) %highlight(%-5level) %magenta(%logger{36}) - %msg%n</pattern>
-        </encoder>
-    </appender>
+    <!--
+        LOG_FORMAT: TEXT (default) or JSON, case-sensitive - it selects logback-<LOG_FORMAT>.xml. Only that appender
+                    is defined, so a regular start is silent, while an unknown format makes logback print its errors.
+        LOG_LEVEL:  root level, INFO by default. Single packages can be tuned through micronaut,
+                    e.g. LOGGER_LEVELS_ORG_FIWARE_IAM=DEBUG
+    -->
+    <include resource="logback-${LOG_FORMAT:-TEXT}.xml" />
 
-    <root level="INFO">
-        <appender-ref ref="STDOUT" />
+    <!--
+        One line per handled request, written by micronaut's access logger (see micronaut.server.netty.access-logger
+        in application.yaml). Kept at INFO independent of the root level, LOG_REQUESTS=false switches it off.
+    -->
+    <logger name="HTTP_ACCESS_LOGGER" level="INFO" />
+
+    <!--
+        Liquibase logs every changelog it reads and every snapshot it takes at INFO, on each start
+        (~90 lines). Only problems are of interest by default, LOG_LEVEL_LIQUIBASE=INFO shows the
+        applied change sets and the update summary again.
+    -->
+    <logger name="liquibase" level="${LOG_LEVEL_LIQUIBASE:-WARN}" />
+
+    <root level="${LOG_LEVEL:-INFO}">
+        <appender-ref ref="OUTPUT" />
     </root>
 </configuration>

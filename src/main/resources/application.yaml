@@ -11,6 +11,14 @@ micronaut:
       port-header: X-Forwarded-Port
       host-header: X-Forwarded-Host
       prefix-header: X-Forwarded-Prefix
+    netty:
+      # one line per request: remote host, request line, status and duration
+      access-logger:
+        enabled: ${LOG_REQUESTS:true}
+        logger-name: HTTP_ACCESS_LOGGER
+        log-format: '%h "%r" %s %Dms'
+        # regular expressions of the request uris that are not logged, e.g. probes
+        exclusions: ${LOG_REQUESTS_EXCLUSIONS:/health.*,/metrics.*}
 
   metrics:
     enabled: true
@@ -38,15 +46,6 @@ datasources:
 #    password: pwd
 #    dialect: POSTGRES
 
-jpa:
-  default:
-    packages-to-scan:
-      - 'org.fiware.iam.repository'
-    properties:
-      hibernate:
-        hbm2ddl:
-          auto: none
-        show_sql: true
 liquibase:
   datasources:
     default:

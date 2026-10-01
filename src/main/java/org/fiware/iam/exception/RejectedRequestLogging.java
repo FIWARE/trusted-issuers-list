@@ -16,37 +16,39 @@
  */
 package org.fiware.iam.exception;
 
-import io.micronaut.context.annotation.Requires;
 import io.micronaut.http.HttpRequest;
-import io.micronaut.http.HttpResponse;
-import io.micronaut.http.HttpStatus;
-import io.micronaut.http.annotation.Produces;
 import io.micronaut.http.server.exceptions.ExceptionHandler;
-import jakarta.inject.Singleton;
-import lombok.extern.slf4j.Slf4j;
-import org.fiware.iam.tir.model.ProblemDetailsVO;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/** Catch all {@link IllegalArgumentException} and translate them into proper 400 responses */
-@Produces
-@Singleton
-@Requires(classes = {IllegalArgumentException.class, ExceptionHandler.class})
-@Slf4j
-public class IllegalArgumentExceptionHandler
-    implements ExceptionHandler<IllegalArgumentException, HttpResponse<ProblemDetailsVO>> {
+/**
+ * Logs a request that micronaut itself rejects as invalid (malformed body, missing or unconvertible
+ * arguments) the same way as {@link IllegalArgumentExceptionHandler} does, and then answers it with
+ * micronaut's own handler, so that the response does not change.
+ *
+ * <p>Without it, such a request only shows up as a 400 in the request log, without any reason.
+ *
+ * @param <E> the exception the handler is responsible for
+ * @param <R> the response type of the original handler
+ */
+@RequiredArgsConstructor
+public abstract class RejectedRequestLogging<E extends Throwable, R>
+    implements ExceptionHandler<E, R> {
+
+  /** Named after the concrete handler, so the line tells which kind of rejection it was. */
+  private final Logger log = LoggerFactory.getLogger(getClass());
+
+  private final ExceptionHandler<E, R> delegate;
 
   @Override
-  public HttpResponse<ProblemDetailsVO> handle(
-      HttpRequest request, IllegalArgumentException exception) {
+  public R handle(HttpRequest request, E exception) {
     log.warn(
         "Rejected {} {} with 400: {}",
         request.getMethod(),
         request.getUri(),
         exception.getMessage());
     log.debug("Rejected {} {}", request.getMethod(), request.getUri(), exception);
-    return HttpResponse.badRequest(
-        new ProblemDetailsVO()
-            .status(HttpStatus.BAD_REQUEST.getCode())
-            .detail(exception.getLocalizedMessage())
-            .title("Received an invalid issuer configuration."));
+    return delegate.handle(request, exception);
   }
 }

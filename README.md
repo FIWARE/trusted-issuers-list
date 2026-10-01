@@ -62,7 +62,7 @@ The following table concentrates on the most important configuration parameters:
 | `LOG_FORMAT`                           | `TEXT` for human readable lines, `JSON` for one JSON object per line                            | `TEXT`                     |
 | `LOG_LEVEL`                            | Root log level                                                                                  | `INFO`                     |
 | `LOGGER_LEVELS_ORG_FIWARE_IAM`         | Level of the trusted-issuers-list itself, e.g. `DEBUG` to see why a lookup was answered with 404 | `INFO`                     |
-| `LOG_REQUESTS`                         | Log one line per handled request (remote host, request line, status, bytes, duration)          | `true`                     |
+| `LOG_REQUESTS`                         | Log one line per handled request (remote host, request line, status, duration)                 | `true`                     |
 | `LOG_REQUESTS_EXCLUSIONS`              | Comma separated regular expressions of request uris that are not logged, e.g. probes            | `/health.*,/metrics.*`     |
 | `LOG_LEVEL_LIQUIBASE`                  | Level of the database migrations, `INFO` shows every applied change set and the update summary  | `WARN`                     |
 | `LOGGER_LEVELS_IO_MICRONAUT_DATA_QUERY` | `DEBUG` logs every SQL statement                                                                | -                          |
@@ -72,13 +72,13 @@ Levels are used as follows:
 * `ERROR` - the service itself is broken: an unexpected exception, logged once with its stack trace
 * `WARN` - a request was rejected as invalid (400), always with the reason
 * `INFO` - every handled request, and every change of the list: an issuer was created, updated or deleted, a scope granted or revoked credentials. A rejected duplicate (409) is logged here as well
-* `DEBUG` - how a result was reached: the credential types involved, and why a lookup or change found nothing (404)
+* `DEBUG` - the details: the complete issuer or credentials (including their claims) of every change, and why a lookup or change found nothing (404)
 
-Every line concerning an issuer starts with `Issuer <did>:`, e.g.
+Every line concerning an issuer starts with `Issuer <did>`, e.g.
 
 ```
-2026-09-30T15:23:14.432+02:00 INFO  [default-eventLoopGroup-2-7] o.f.i.r.TrustedIssuersListController - Issuer did:web:other.org: scope order-1 grants 1 credential(s), replaced 0 (issuer created)
-2026-09-30T15:23:14.436+02:00 INFO  [default-eventLoopGroup-2-7] HTTP_ACCESS_LOGGER - 10.42.0.12 "PUT /issuer/did:web:other.org/credential?scope=order-1 HTTP/1.1" 200 110 7ms
+2026-09-30T15:23:14.432+02:00 INFO  [default-eventLoopGroup-2-7] o.f.i.r.TrustedIssuersListController - Issuer did:web:other.org granted credentials for scope order-1
+2026-09-30T15:23:14.436+02:00 INFO  [default-eventLoopGroup-2-7] HTTP_ACCESS_LOGGER - 10.42.0.12 "PUT /issuer/did:web:other.org/credential?scope=order-1 HTTP/1.1" 200 7ms
 2026-09-30T15:22:57.849+02:00 WARN  [default-eventLoopGroup-2-4] o.f.i.e.IllegalArgumentExceptionHandler - Rejected GET /v4/issuers/notadid with 400: Provided string is not a valid did.
 ```
 

@@ -12,11 +12,11 @@ micronaut:
       host-header: X-Forwarded-Host
       prefix-header: X-Forwarded-Prefix
     netty:
-      # one line per request: remote host, request line, status, bytes sent and duration
+      # one line per request: remote host, request line, status and duration
       access-logger:
         enabled: ${LOG_REQUESTS:true}
         logger-name: HTTP_ACCESS_LOGGER
-        log-format: '%h "%r" %s %b %Dms'
+        log-format: '%h "%r" %s %Dms'
         # regular expressions of the request uris that are not logged, e.g. probes
         exclusions: ${LOG_REQUESTS_EXCLUSIONS:/health.*,/metrics.*}
 

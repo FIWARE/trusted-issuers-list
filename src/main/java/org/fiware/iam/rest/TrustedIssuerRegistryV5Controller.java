@@ -192,7 +192,7 @@ public class TrustedIssuerRegistryV5Controller implements Tirv5Api {
     checkDidFormat(did);
     Optional<TrustedIssuer> optionalIssuer = trustedIssuerRepository.getByDid(did);
     if (optionalIssuer.isEmpty()) {
-      log.debug("Issuer {}: not in the registry", did);
+      log.debug("Issuer {} not in the registry", did);
       return HttpResponse.notFound();
     }
 
@@ -219,7 +219,7 @@ public class TrustedIssuerRegistryV5Controller implements Tirv5Api {
     checkDidFormat(did);
     Optional<TrustedIssuer> optionalIssuer = trustedIssuerRepository.getByDid(did);
     if (optionalIssuer.isEmpty()) {
-      log.debug("Issuer {}: not in the registry", did);
+      log.debug("Issuer {} not in the registry", did);
       return HttpResponse.notFound();
     }
 
@@ -267,14 +267,14 @@ public class TrustedIssuerRegistryV5Controller implements Tirv5Api {
     checkDidFormat(did);
     Optional<TrustedIssuer> optionalIssuer = trustedIssuerRepository.getByDid(did);
     if (optionalIssuer.isEmpty()) {
-      log.debug("Issuer {}: not in the registry", did);
+      log.debug("Issuer {} not in the registry", did);
       return HttpResponse.notFound();
     }
 
     TrustedIssuer issuer = optionalIssuer.get();
     Optional<Credential> matchingCredential = findCredentialByAttributeId(issuer, attributeId);
     if (matchingCredential.isEmpty()) {
-      log.debug("Issuer {}: no attribute {}", did, attributeId);
+      log.debug("Issuer {} has no attribute {}", did, attributeId);
       return HttpResponse.notFound();
     }
 
@@ -300,14 +300,14 @@ public class TrustedIssuerRegistryV5Controller implements Tirv5Api {
     checkDidFormat(did);
     Optional<TrustedIssuer> optionalIssuer = trustedIssuerRepository.getByDid(did);
     if (optionalIssuer.isEmpty()) {
-      log.debug("Issuer {}: not in the registry", did);
+      log.debug("Issuer {} not in the registry", did);
       return HttpResponse.notFound();
     }
 
     Optional<Credential> matchingCredential =
         findCredentialByAttributeId(optionalIssuer.get(), attributeId);
     if (matchingCredential.isEmpty()) {
-      log.debug("Issuer {}: no attribute {}", did, attributeId);
+      log.debug("Issuer {} has no attribute {}", did, attributeId);
       return HttpResponse.notFound();
     }
 
@@ -346,24 +346,24 @@ public class TrustedIssuerRegistryV5Controller implements Tirv5Api {
     checkDidFormat(did);
     Optional<TrustedIssuer> optionalIssuer = trustedIssuerRepository.getByDid(did);
     if (optionalIssuer.isEmpty()) {
-      log.debug("Issuer {}: not in the registry", did);
+      log.debug("Issuer {} not in the registry", did);
       return HttpResponse.notFound();
     }
 
     Optional<Credential> matchingCredential =
         findCredentialByAttributeId(optionalIssuer.get(), attributeId);
     if (matchingCredential.isEmpty()) {
-      log.debug("Issuer {}: no attribute {}", did, attributeId);
+      log.debug("Issuer {} has no attribute {}", did, attributeId);
       return HttpResponse.notFound();
     }
 
     String expectedRevisionId = REVISION_PREFIX + matchingCredential.get().getId();
     if (!expectedRevisionId.equals(revisionId)) {
       log.debug(
-          "Issuer {}: attribute {} has no revision {}, only {}",
+          "Issuer {} has no revision {} of attribute {}, only {}",
           did,
-          attributeId,
           revisionId,
+          attributeId,
           expectedRevisionId);
       return HttpResponse.notFound();
     }

@@ -36,7 +36,6 @@ public interface CredentialRepository extends PageableRepository<Credential, Int
    *
    * @param did the DID of the issuer
    * @param scope what granted the credentials
-   * @return the number of deleted credentials
    */
-  long deleteByTrustedIssuerDidAndScope(String did, String scope);
+  void deleteByTrustedIssuerDidAndScope(String did, String scope);
 }

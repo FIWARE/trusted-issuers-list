@@ -71,7 +71,8 @@ mvn clean generate-sources # Only generate code from OpenAPI specs
 - **No magic constants**: Named constants for defaults, param names, etc.
 - **Logging**: expected failures are logged once, as one line with the reason and without stack trace, by
   their exception handler; only `CatchAllExceptionHandler` logs a stack trace (at ERROR). Changes of the list are
-  INFO, lookups and their misses DEBUG. Lines about an issuer start with `Issuer <did>:`. Requests are logged by
+  INFO with did (and scope) only, no counts; the complete issuer/credentials as JSON and lookup misses are DEBUG.
+  Lines about an issuer start with `Issuer <did>`. Requests are logged by
   micronaut's access logger (`HTTP_ACCESS_LOGGER`), liquibase output is routed through logback in `Application`.
   Output format and levels via env vars (`LOG_FORMAT=TEXT|JSON`, `LOG_LEVEL`, ... see README "Logging").
 

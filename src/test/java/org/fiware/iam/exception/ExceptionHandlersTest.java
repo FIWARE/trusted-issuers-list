@@ -34,8 +34,9 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
 /**
- * Expected failures are logged as one line with their reason, only unexpected ones with their stack
- * trace.
+ * Every failure is logged with its reason and stack trace, at a level matching its severity: an
+ * invalid request at WARN, a conflict at INFO (stack trace only on DEBUG), an unexpected failure at
+ * ERROR.
  */
 class ExceptionHandlersTest {
 
@@ -43,8 +44,12 @@ class ExceptionHandlersTest {
 
   private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
 
+  private Level previousLevel;
+
   @BeforeEach
   void attachAppender() {
+    previousLevel = exceptionLogger().getLevel();
+    exceptionLogger().setLevel(Level.DEBUG);
     appender.start();
     exceptionLogger().addAppender(appender);
   }
@@ -52,10 +57,11 @@ class ExceptionHandlersTest {
   @AfterEach
   void detachAppender() {
     exceptionLogger().detachAppender(appender);
+    exceptionLogger().setLevel(previousLevel);
   }
 
   @Test
-  void anIllegalArgumentIsOneWarningWithoutStackTrace() {
+  void anIllegalArgumentIsAWarningWithItsStackTrace() {
     HttpResponse<ProblemDetailsVO> response =
         new IllegalArgumentExceptionHandler()
             .handle(REQUEST, new IllegalArgumentException("Provided string is not a valid did."));
@@ -67,22 +73,27 @@ class ExceptionHandlersTest {
     assertEquals(
         "Rejected POST /issuer with 400: Provided string is not a valid did.",
         event.getFormattedMessage());
-    assertNull(event.getThrowableProxy(), "An expected failure must not log a stack trace.");
+    assertNotNull(event.getThrowableProxy(), "An invalid request is logged with its stack trace.");
   }
 
   @Test
-  void aConflictIsOneLineWithTheEntityAndWithoutStackTrace() {
+  void aConflictIsOneInfoLineWithTheDetailsOnDebug() {
     HttpResponse<ProblemDetailsVO> response =
         new ConflictExceptionHandler()
             .handle(REQUEST, new ConflictException("Issuer already exists.", "did:web:issuer.org"));
 
     assertEquals(HttpStatus.CONFLICT, response.getStatus());
-    ILoggingEvent event = singleEvent();
-    assertEquals(Level.INFO, event.getLevel());
+    assertEquals(2, appender.list.size(), "A conflict is one INFO line plus its details on DEBUG.");
+    ILoggingEvent info = appender.list.get(0);
+    assertEquals(Level.INFO, info.getLevel());
+    assertEquals("Rejected POST /issuer with 409", info.getFormattedMessage());
+    assertNull(info.getThrowableProxy(), "On INFO, a conflict is a single line.");
+    ILoggingEvent debug = appender.list.get(1);
+    assertEquals(Level.DEBUG, debug.getLevel());
     assertEquals(
-        "Rejected POST /issuer with 409: Issuer already exists. (did:web:issuer.org)",
-        event.getFormattedMessage());
-    assertNull(event.getThrowableProxy(), "An expected failure must not log a stack trace.");
+        "Conflict for POST /issuer on did:web:issuer.org: Issuer already exists.",
+        debug.getFormattedMessage());
+    assertNotNull(debug.getThrowableProxy(), "On DEBUG, the conflict comes with its stack trace.");
   }
 
   @Test

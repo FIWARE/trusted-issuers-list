@@ -29,8 +29,8 @@ import org.fiware.iam.tir.model.ProblemDetailsVO;
 /**
  * Handler to catch and log all unexpected exceptions and translate them into a proper 500 response.
  *
- * <p>This is the only handler that logs a stack trace: every expected failure has its own handler
- * that logs a single line with the reason.
+ * <p>Expected failures have their own handlers: an invalid request (400) is logged at WARN, a
+ * conflict (409) at INFO, both with the reason and its stack trace.
  */
 @Produces
 @Singleton

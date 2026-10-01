@@ -37,12 +37,14 @@ public class ConflictExceptionHandler
 
   @Override
   public HttpResponse<ProblemDetailsVO> handle(HttpRequest request, ConflictException exception) {
-    log.info(
-        "Rejected {} {} with 409: {} ({})",
+    log.info("Rejected {} {} with 409", request.getMethod(), request.getUri());
+    log.debug(
+        "Conflict for {} {} on {}: {}",
         request.getMethod(),
         request.getUri(),
+        exception.getEntityId(),
         exception.getMessage(),
-        exception.getEntityId());
+        exception);
     return HttpResponse.status(HttpStatus.CONFLICT)
         .body(
             new ProblemDetailsVO()

@@ -178,7 +178,11 @@ public class TrustedIssuersListController implements IssuerApi {
     TrustedIssuer trustedIssuer =
         trustedIssuerRepository
             .getByDid(did)
-            .orElseGet(() -> trustedIssuerRepository.save(new TrustedIssuer().setDid(did)));
+            .orElseGet(
+                () -> {
+                  log.info("Issuer {} created for scope {}", did, scope);
+                  return trustedIssuerRepository.save(new TrustedIssuer().setDid(did));
+                });
 
     credentialRepository.deleteByTrustedIssuerDidAndScope(did, scope);
 
@@ -186,7 +190,12 @@ public class TrustedIssuersListController implements IssuerApi {
         .map(trustedIssuerMapper::map)
         .map(credential -> credential.setScope(scope).setTrustedIssuer(trustedIssuer))
         .forEach(credentialRepository::save);
-    log.info("Issuer {} granted credentials for scope {}", did, scope);
+    if (credentialsVO.isEmpty()) {
+      // nothing granted means the scope no longer grants anything
+      log.info("Issuer {} revoked credentials of scope {}", did, scope);
+    } else {
+      log.info("Issuer {} granted credentials for scope {}", did, scope);
+    }
     if (log.isDebugEnabled()) {
       log.debug("Issuer {} granted for scope {}: {}", did, scope, toJson(credentialsVO));
     }

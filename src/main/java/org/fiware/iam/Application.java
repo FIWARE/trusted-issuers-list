@@ -51,7 +51,7 @@ public class Application {
     }
 
     // the ascii banner would be the only output that is not a JSON line
-    boolean jsonLogging = LOG_FORMAT_JSON.equalsIgnoreCase(System.getenv(LOG_FORMAT));
+    boolean jsonLogging = LOG_FORMAT_JSON.equals(System.getenv(LOG_FORMAT));
     Micronaut.build(args).mainClass(Application.class).banner(!jsonLogging).start();
   }
 }

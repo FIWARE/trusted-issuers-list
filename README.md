@@ -59,7 +59,7 @@ The following table concentrates on the most important configuration parameters:
 
 | Env-Var                                | Description                                                                                     | Default                    |
 |----------------------------------------|-------------------------------------------------------------------------------------------------|----------------------------|
-| `LOG_FORMAT`                           | `TEXT` for human readable lines, `JSON` for one JSON object per line                            | `TEXT`                     |
+| `LOG_FORMAT`                           | `TEXT` for human readable lines, `JSON` for one JSON object per line (case-sensitive; an unknown value makes logback print why there is no output) | `TEXT`                     |
 | `LOG_LEVEL`                            | Root log level                                                                                  | `INFO`                     |
 | `LOGGER_LEVELS_ORG_FIWARE_IAM`         | Level of the trusted-issuers-list itself, e.g. `DEBUG` to see why a lookup was answered with 404 | `INFO`                     |
 | `LOG_REQUESTS`                         | Log one line per handled request (remote host, request line, status, duration)                 | `true`                     |

@@ -41,8 +41,8 @@ public class IllegalArgumentExceptionHandler
         "Rejected {} {} with 400: {}",
         request.getMethod(),
         request.getUri(),
-        exception.getMessage(),
-        exception);
+        exception.getMessage());
+    log.debug("Rejected {} {}", request.getMethod(), request.getUri(), exception);
     return HttpResponse.badRequest(
         new ProblemDetailsVO()
             .status(HttpStatus.BAD_REQUEST.getCode())

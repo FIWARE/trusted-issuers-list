@@ -70,8 +70,8 @@ The following table concentrates on the most important configuration parameters:
 Levels are used as follows:
 
 * `ERROR` - the service itself is broken: an unexpected exception, logged once with its stack trace
-* `WARN` - a request was rejected as invalid (400), with the reason and its stack trace. This includes requests rejected by micronaut itself, e.g. malformed JSON or a missing body
-* `INFO` - every handled request, and every change of the list: an issuer was created, updated or deleted, a scope granted or revoked credentials. A rejected duplicate (409) is logged here as one line, its reason and stack trace on `DEBUG`
+* `WARN` - a request was rejected as invalid (400), as one line with the reason; its stack trace only on `DEBUG`. This includes requests rejected by micronaut itself, e.g. malformed JSON or a missing body
+* `INFO` - every handled request, and every change of the list: an issuer was created, updated or deleted, a scope granted or revoked credentials. A rejected duplicate (409) is logged here as one line naming the issuer (`Issuer <did> already exists, ...`), its reason and stack trace on `DEBUG`
 * `DEBUG` - the details: the complete issuer or credentials (including their claims) of every change, and why a lookup or change found nothing (404)
 
 Every line concerning an issuer starts with `Issuer <did>`, e.g.

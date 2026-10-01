@@ -34,9 +34,9 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
 /**
- * Every failure is logged with its reason and stack trace, at a level matching its severity: an
- * invalid request at WARN, a conflict at INFO (stack trace only on DEBUG), an unexpected failure at
- * ERROR.
+ * Every failure is logged with its reason, at a level matching its severity: an invalid request at
+ * WARN, a conflict at INFO, both with their stack trace only on DEBUG, and an unexpected failure at
+ * ERROR with its stack trace.
  */
 class ExceptionHandlersTest {
 
@@ -61,19 +61,23 @@ class ExceptionHandlersTest {
   }
 
   @Test
-  void anIllegalArgumentIsAWarningWithItsStackTrace() {
+  void anIllegalArgumentIsOneWarningWithTheStackTraceOnDebug() {
     HttpResponse<ProblemDetailsVO> response =
         new IllegalArgumentExceptionHandler()
             .handle(REQUEST, new IllegalArgumentException("Provided string is not a valid did."));
 
     assertEquals(HttpStatus.BAD_REQUEST, response.getStatus());
     assertEquals("Provided string is not a valid did.", response.body().getDetail());
-    ILoggingEvent event = singleEvent();
-    assertEquals(Level.WARN, event.getLevel());
+    assertEquals(2, appender.list.size(), "An invalid request is one WARN line plus its trace.");
+    ILoggingEvent warn = appender.list.get(0);
+    assertEquals(Level.WARN, warn.getLevel());
     assertEquals(
         "Rejected POST /issuer with 400: Provided string is not a valid did.",
-        event.getFormattedMessage());
-    assertNotNull(event.getThrowableProxy(), "An invalid request is logged with its stack trace.");
+        warn.getFormattedMessage());
+    assertNull(warn.getThrowableProxy(), "Any client can send invalid requests, keep it one line.");
+    ILoggingEvent debug = appender.list.get(1);
+    assertEquals(Level.DEBUG, debug.getLevel());
+    assertNotNull(debug.getThrowableProxy(), "On DEBUG, the rejection comes with its stack trace.");
   }
 
   @Test
@@ -86,7 +90,9 @@ class ExceptionHandlersTest {
     assertEquals(2, appender.list.size(), "A conflict is one INFO line plus its details on DEBUG.");
     ILoggingEvent info = appender.list.get(0);
     assertEquals(Level.INFO, info.getLevel());
-    assertEquals("Rejected POST /issuer with 409", info.getFormattedMessage());
+    assertEquals(
+        "Issuer did:web:issuer.org already exists, rejected POST /issuer with 409",
+        info.getFormattedMessage());
     assertNull(info.getThrowableProxy(), "On INFO, a conflict is a single line.");
     ILoggingEvent debug = appender.list.get(1);
     assertEquals(Level.DEBUG, debug.getLevel());

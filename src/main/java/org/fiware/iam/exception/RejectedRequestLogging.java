@@ -47,8 +47,8 @@ public abstract class RejectedRequestLogging<E extends Throwable, R>
         "Rejected {} {} with 400: {}",
         request.getMethod(),
         request.getUri(),
-        exception.getMessage(),
-        exception);
+        exception.getMessage());
+    log.debug("Rejected {} {}", request.getMethod(), request.getUri(), exception);
     return delegate.handle(request, exception);
   }
 }

@@ -18,6 +18,7 @@ package org.fiware.iam.exception;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -52,8 +53,12 @@ class RejectedRequestLoggingTest {
 
   private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
 
+  private Level previousLevel;
+
   @BeforeEach
   void attachAppender() {
+    previousLevel = exceptionLogger().getLevel();
+    exceptionLogger().setLevel(Level.DEBUG);
     appender.start();
     exceptionLogger().addAppender(appender);
   }
@@ -61,6 +66,7 @@ class RejectedRequestLoggingTest {
   @AfterEach
   void detachAppender() {
     exceptionLogger().detachAppender(appender);
+    exceptionLogger().setLevel(previousLevel);
   }
 
   @Test
@@ -109,13 +115,16 @@ class RejectedRequestLoggingTest {
         appender.list.stream()
             .filter(event -> event.getLoggerName().equals(handler.getName()))
             .toList();
-    assertEquals(1, events.size(), "The rejection has to be logged exactly once.");
-    ILoggingEvent event = events.get(0);
-    assertEquals(Level.WARN, event.getLevel());
+    assertEquals(2, events.size(), "A rejection is one WARN line plus its trace on DEBUG.");
+    ILoggingEvent warn = events.get(0);
+    assertEquals(Level.WARN, warn.getLevel());
     assertTrue(
-        event.getFormattedMessage().startsWith(messagePrefix),
-        "Unexpected message: " + event.getFormattedMessage());
-    assertNotNull(event.getThrowableProxy(), "An invalid request is logged with its stack trace.");
+        warn.getFormattedMessage().startsWith(messagePrefix),
+        "Unexpected message: " + warn.getFormattedMessage());
+    assertNull(warn.getThrowableProxy(), "Any client can send invalid requests, keep it one line.");
+    ILoggingEvent debug = events.get(1);
+    assertEquals(Level.DEBUG, debug.getLevel());
+    assertNotNull(debug.getThrowableProxy(), "On DEBUG, the rejection comes with its stack trace.");
   }
 
   private static Logger exceptionLogger() {

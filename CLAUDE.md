@@ -70,7 +70,8 @@ mvn clean generate-sources # Only generate code from OpenAPI specs
 - **Lombok**: `@Data`, `@Accessors(chain = true)`, `@RequiredArgsConstructor` used throughout.
 - **No magic constants**: Named constants for defaults, param names, etc.
 - **Logging**: failures are logged once, by their exception handler, with the reason and the stack trace:
-  unexpected ones at ERROR (`CatchAllExceptionHandler`), invalid requests (400) at WARN; a conflict (409) is one
+  unexpected ones at ERROR (`CatchAllExceptionHandler`), invalid requests (400) at WARN, including the ones
+  micronaut rejects itself (`RejectedRequestLogging` wraps its handlers, the response is unchanged); a conflict (409) is one
   INFO line with method and uri, its reason and stack trace on DEBUG. Changes of the list are
   INFO with did (and scope) only, no counts; the complete issuer/credentials as JSON and lookup misses are DEBUG.
   Lines about an issuer start with `Issuer <did>`. Requests are logged by

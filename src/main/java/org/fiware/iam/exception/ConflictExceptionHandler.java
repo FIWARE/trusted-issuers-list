@@ -37,7 +37,18 @@ public class ConflictExceptionHandler
 
   @Override
   public HttpResponse<ProblemDetailsVO> handle(HttpRequest request, ConflictException exception) {
-    log.debug("Received  a conflict for {}.", request, exception);
+    log.info(
+        "Issuer {} already exists, rejected {} {} with 409",
+        exception.getEntityId(),
+        request.getMethod(),
+        request.getUri());
+    log.debug(
+        "Conflict for {} {} on {}: {}",
+        request.getMethod(),
+        request.getUri(),
+        exception.getEntityId(),
+        exception.getMessage(),
+        exception);
     return HttpResponse.status(HttpStatus.CONFLICT)
         .body(
             new ProblemDetailsVO()

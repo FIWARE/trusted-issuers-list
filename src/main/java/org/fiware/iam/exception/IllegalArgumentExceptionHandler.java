@@ -37,7 +37,12 @@ public class IllegalArgumentExceptionHandler
   @Override
   public HttpResponse<ProblemDetailsVO> handle(
       HttpRequest request, IllegalArgumentException exception) {
-    log.info("Received an illegal argument for request {}.", request, exception);
+    log.warn(
+        "Rejected {} {} with 400: {}",
+        request.getMethod(),
+        request.getUri(),
+        exception.getMessage());
+    log.debug("Rejected {} {}", request.getMethod(), request.getUri(), exception);
     return HttpResponse.badRequest(
         new ProblemDetailsVO()
             .status(HttpStatus.BAD_REQUEST.getCode())

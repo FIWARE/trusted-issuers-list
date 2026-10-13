@@ -63,6 +63,7 @@ public class TrustedIssuerRegistryController implements TirApi {
     checkDidFormat(did);
     Optional<TrustedIssuer> optionalTrustedIssuer = trustedIssuerRepository.getByDid(did);
     if (optionalTrustedIssuer.isEmpty()) {
+      log.debug("Issuer {} not in the registry", did);
       return HttpResponse.notFound();
     }
     return HttpResponse.ok(trustedIssuerMapper.map(optionalTrustedIssuer.get()));

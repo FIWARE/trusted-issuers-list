@@ -16,7 +16,10 @@
  */
 package org.fiware.iam.repository;
 
+import io.micronaut.core.annotation.Nullable;
 import io.micronaut.data.annotation.Join;
+import io.micronaut.data.model.Page;
+import io.micronaut.data.model.Pageable;
 import io.micronaut.data.repository.PageableRepository;
 import java.util.Optional;
 
@@ -34,4 +37,42 @@ public interface TrustedIssuerRepository extends PageableRepository<TrustedIssue
   @Join(value = "credentials.claims", type = Join.Type.LEFT_FETCH)
   @Join(value = "credentials.claims.claimValues", type = Join.Type.LEFT_FETCH)
   Optional<TrustedIssuer> getByDid(String did);
+
+  /**
+   * Find the issuers holding credentials granted by one (scope, scopeType) pair, each listed once.
+   * A {@code null} scopeType matches only untyped grants, never "any type".
+   *
+   * @param scope what granted the credentials
+   * @param scopeType the kind of scope, {@code null} for untyped
+   * @param pageable the page to return, including its sort
+   * @return the page of matching issuers, without their credentials
+   */
+  default Page<TrustedIssuer> findByGrant(
+      String scope, @Nullable String scopeType, Pageable pageable) {
+    // A derived query would bind null as "scope_type = NULL", which never matches.
+    return scopeType == null
+        ? findDistinctByCredentialsScopeAndCredentialsScopeTypeIsNull(scope, pageable)
+        : findDistinctByCredentialsScopeAndCredentialsScopeTypeEquals(scope, scopeType, pageable);
+  }
+
+  /**
+   * Typed half of {@link #findByGrant}, use that instead.
+   *
+   * @param scope what granted the credentials
+   * @param scopeType the kind of scope
+   * @param pageable the page to return
+   * @return the page of matching issuers
+   */
+  Page<TrustedIssuer> findDistinctByCredentialsScopeAndCredentialsScopeTypeEquals(
+      String scope, String scopeType, Pageable pageable);
+
+  /**
+   * Untyped half of {@link #findByGrant}, use that instead.
+   *
+   * @param scope what granted the credentials
+   * @param pageable the page to return
+   * @return the page of matching issuers
+   */
+  Page<TrustedIssuer> findDistinctByCredentialsScopeAndCredentialsScopeTypeIsNull(
+      String scope, Pageable pageable);
 }

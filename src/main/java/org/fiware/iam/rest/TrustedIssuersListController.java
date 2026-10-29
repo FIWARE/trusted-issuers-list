@@ -184,7 +184,7 @@ public class TrustedIssuersListController implements IssuerApi {
                   return trustedIssuerRepository.save(new TrustedIssuer().setDid(did));
                 });
 
-    credentialRepository.deleteByTrustedIssuerDidAndScope(did, scope);
+    credentialRepository.deleteByTrustedIssuerDidAndScopeAndScopeType(did, scope, null);
 
     credentialsVO.stream()
         .map(trustedIssuerMapper::map)
@@ -226,7 +226,7 @@ public class TrustedIssuersListController implements IssuerApi {
       log.debug("Issuer {} has nothing to revoke for scope {}, it does not exist", did, scope);
       return HttpResponse.notFound();
     }
-    credentialRepository.deleteByTrustedIssuerDidAndScope(did, scope);
+    credentialRepository.deleteByTrustedIssuerDidAndScopeAndScopeType(did, scope, null);
     log.info("Issuer {} revoked credentials of scope {}", did, scope);
     return HttpResponse.noContent();
   }

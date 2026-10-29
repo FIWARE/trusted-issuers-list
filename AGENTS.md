@@ -17,7 +17,7 @@ A Micronaut microservice that manages trusted credential issuers. It exposes a C
 ## Project Structure
 ```
 api/
-  trusted-issuers-list.yaml          # TIL management API (CRUD + scoped grants)
+  trusted-issuers-list.yaml          # TIL management API (CRUD + scoped grants + scope queries)
   trusted-issuers-registry.yaml      # TIR /v4 (read-only)
   trusted-issuers-registry-v5.yaml   # TIR /v5 (read-only)
 src/main/java/org/fiware/iam/
@@ -33,7 +33,7 @@ src/main/java/org/fiware/iam/
   filter/, configuration/            # X-Forwarded-* handling
 src/main/resources/db/migration/
   changelog.xml                      # includeAll path="v0", so new files in v0/ are picked up automatically
-  v0/changelog-v0_0_1..6.xml         # v0_0_6 adds credential.scope (precondition-guarded) and tags v0.0.6
+  v0/changelog-v0_0_1..7.xml         # v0_0_6 adds credential.scope, v0_0_7 credential.scope_type (precondition-guarded)
 src/test/java/org/fiware/iam/rest/
   TrustedIssuersListControllerTest.java       # implements IssuerApiTestSpec, scoped-grant tests from line ~369
   TrustedIssuersListLoggingTest.java          # asserts exact INFO log lines
@@ -54,7 +54,7 @@ mvn spotless:check
 ## Key Conventions
 - **OpenAPI-first**: changing an operation's parameters in `api/*.yaml` changes the generated `IssuerApi` interface and the generated `IssuerApiTestClient`. Every controller and every test call site must follow. Packages: `org.fiware.iam.{til,tir,tir.v5}.{api,model}`, models end in `VO`. Optional query params arrive as `@Nullable String` (`useOptional=false`).
 - **Generated test helpers**: tests implement `*TestSpec` (one method per operation and status), call through `*TestClient`, and build data with `*VOTestExample`.
-- **Scoped grants**: `Credential.scope` (nullable) says what granted a credential (e.g. a ProductOrder id). `null` means managed directly via `PUT /issuer/{did}`, and scoped operations never touch such a credential. `scope` is internal: it is absent from the API models and from every `/v4` and `/v5` projection.
+- **Scoped grants**: a grant is the pair (`Credential.scope`, `Credential.scopeType`), both nullable. The scope says what granted a credential (e.g. a ProductOrder id), and the type says what kind of thing it is (enum `ScopeType`, e.g. `dataspace-membership`). A `null` scope means managed directly via `PUT /issuer/{did}`, and scoped operations never touch such a credential. A `null` scopeType matches only untyped grants: derived queries need an IsNull/Equals split behind a `default` method, because binding null never matches. `scope` is internal: it is absent from the API models and from every `/v4` and `/v5` projection.
 - **Dialect repos**: `H2/MySql/Postgres*Repository` are empty subinterfaces gated by `@Requires(property = "datasources.default.dialect")`. Queries live in the base interface.
 - **Liquibase**: one file per schema version under `v0/`, ending with a `tagDatabase` changeset. Use `preConditions onFail="MARK_RAN"` guards (see v0_0_6). Keep MySQL's key-length limits in mind (`trusted_issuer_id` is varchar(768)).
 - **Lombok**: `@Data`, `@Accessors(chain = true)`, `@RequiredArgsConstructor`, `@Slf4j`.

@@ -17,6 +17,7 @@
 package org.fiware.iam.rest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -24,7 +25,9 @@ import io.micronaut.http.HttpResponse;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.client.exceptions.HttpClientResponseException;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
@@ -32,11 +35,13 @@ import org.fiware.iam.repository.TrustedIssuerRepository;
 import org.fiware.iam.til.api.IssuerApiTestClient;
 import org.fiware.iam.til.model.ClaimVOTestExample;
 import org.fiware.iam.til.model.CredentialsVOTestExample;
+import org.fiware.iam.til.model.ScopeTypeVO;
 import org.fiware.iam.til.model.TimeRangeVOTestExample;
 import org.fiware.iam.til.model.TrustedIssuerVO;
 import org.fiware.iam.til.model.TrustedIssuerVOTestExample;
 import org.fiware.iam.tir.api.TirApiTestClient;
 import org.fiware.iam.tir.api.TirApiTestSpec;
+import org.fiware.iam.tir.model.IssuerAttributeVO;
 import org.fiware.iam.tir.model.IssuerVO;
 import org.fiware.iam.tir.model.IssuersResponseVO;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,6 +57,7 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
 
   private static final String DID_TEMPLATE = "did:elsi:%s";
   private static final String DID_HAPPYPETS = String.format(DID_TEMPLATE, "happypets");
+  private static final String ORDER_SCOPE = "urn:ngsi-ld:product-order:first";
 
   private final TirApiTestClient testClient;
   private final IssuerApiTestClient insertionClient;
@@ -278,5 +284,44 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
         1,
         issuer.getAttributes().size(),
         "The registry exposes credentials, not grants - two grants of one credential are one attribute.");
+  }
+
+  @Test
+  public void getIssuerV4200_scopeTypeChangesNeitherBodyNorHash() throws Exception {
+    List<org.fiware.iam.til.model.CredentialsVO> credentials =
+        List.of(CredentialsVOTestExample.build().validFor(null));
+    insertionClient.replaceCredentialsByScope(DID_HAPPYPETS, ORDER_SCOPE, credentials, null);
+    IssuerAttributeVO untyped = testClient.getIssuerV4(DID_HAPPYPETS).body().getAttributes().get(0);
+
+    repository.deleteAll();
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, ORDER_SCOPE, credentials, ScopeTypeVO.DATASPACE_MEMBERSHIP);
+    IssuerAttributeVO typed = testClient.getIssuerV4(DID_HAPPYPETS).body().getAttributes().get(0);
+
+    assertEquals(
+        untyped.getBody(),
+        typed.getBody(),
+        "The scope type must not appear in the attribute body - the registry is world-readable.");
+    assertEquals(untyped.getHash(), typed.getHash(), "The scope type must not change the hash.");
+    assertFalse(
+        new String(Base64.getDecoder().decode(typed.getBody()), StandardCharsets.UTF_8)
+            .contains(ScopeTypeVO.DATASPACE_MEMBERSHIP.getValue()),
+        "The decoded body must not carry the scope type.");
+  }
+
+  @Test
+  public void getIssuerV4200_deduplicatesWhatTwoTypesOfOneScopeGranted() throws Exception {
+    List<org.fiware.iam.til.model.CredentialsVO> credentials =
+        List.of(CredentialsVOTestExample.build().validFor(null));
+    insertionClient.replaceCredentialsByScope(DID_HAPPYPETS, ORDER_SCOPE, credentials, null);
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, ORDER_SCOPE, credentials, ScopeTypeVO.DATASPACE_MEMBERSHIP);
+
+    IssuerVO issuer = testClient.getIssuerV4(DID_HAPPYPETS).body();
+
+    assertEquals(
+        1,
+        issuer.getAttributes().size(),
+        "An untyped and a typed grant of one credential are one attribute in the registry.");
   }
 }

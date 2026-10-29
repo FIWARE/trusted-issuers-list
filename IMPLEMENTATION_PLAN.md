@@ -50,7 +50,7 @@ Add the optional query parameter and the controller logic.
 ### Step 3: Parameterized (scope, scopeType) tests and registry isolation
 Prove the four acceptance criteria. Test code only, unless a test exposes a bug from the earlier steps.
 
-- `TrustedIssuersListControllerTest`: add constants, e.g. `MEMBERSHIP_SCOPE_TYPE = "dataspace-membership"` and `OTHER_SCOPE_TYPE`. Add a helper `scopedCredentials(did, scope, scopeType)` and keep the 2-arg overload delegating with `null`.
+- `TrustedIssuersListControllerTest`: add constants, e.g. `MEMBERSHIP_SCOPE_TYPE = "dataspace-membership"` and `OTHER_SCOPE_TYPE`. _Update: `ScopeTypeVO` has a single value, so there is no `OTHER_SCOPE_TYPE`. The pairs are `(ORDER_SCOPE, null)` and `(ORDER_SCOPE, DATASPACE_MEMBERSHIP)`, and the 400 cases are blank values (unknown values are covered by `deleteCredentialsByScope400_unknownScopeType`)._ Add a helper `scopedCredentials(did, scope, scopeType)` and keep the 2-arg overload delegating with `null`.
   - `@ParameterizedTest @MethodSource` over (scope, scopeType) pairs: `(ORDER_SCOPE, null)`, `(ORDER_SCOPE, MEMBERSHIP_SCOPE_TYPE)`, `(ORDER_SCOPE, OTHER_SCOPE_TYPE)`. For each pair, grant it plus every *other* pair with the **same scope string**, and grant an unscoped credential through `POST /issuer` without scope.
     - **Coexist**: after `PUT`, every pair holds its own credential.
     - **Independent replace**: `PUT` of one pair with a new credential list changes only that pair.

@@ -39,6 +39,7 @@ import org.fiware.iam.repository.TrustedIssuer;
 import org.fiware.iam.repository.TrustedIssuerRepository;
 import org.fiware.iam.til.api.IssuerApi;
 import org.fiware.iam.til.model.CredentialsVO;
+import org.fiware.iam.til.model.ScopeTypeVO;
 import org.fiware.iam.til.model.TrustedIssuerVO;
 import org.fiware.iam.til.model.TrustedIssuersListResponseVO;
 
@@ -57,8 +58,6 @@ public class TrustedIssuersListController implements IssuerApi {
   private static final String SORT_FIELD = "did";
   private static final String NO_SCOPE_PROVIDED =
       "A scope is required - credentials without one cannot be revoked without affecting others.";
-  private static final String BLANK_SCOPE_TYPE =
-      "A scope type must not be blank - omit it to address untyped grants.";
   private static final String SCOPE_TYPE_WITHOUT_SCOPE =
       "A scope type requires a scope - unscoped credentials cannot be addressed by type.";
 
@@ -114,28 +113,29 @@ public class TrustedIssuersListController implements IssuerApi {
   @Transactional
   @Override
   public HttpResponse<Object> createTrustedIssuer(
-      TrustedIssuerVO trustedIssuerVO, @Nullable String scope, @Nullable String scopeType) {
+      TrustedIssuerVO trustedIssuerVO, @Nullable String scope, @Nullable ScopeTypeVO scopeType) {
     if (scope == null && scopeType != null) {
       // no scoped operation could ever address an unscoped credential by its type
       throw new IllegalArgumentException(SCOPE_TYPE_WITHOUT_SCOPE);
     }
+    if (scope != null) {
+      requireScope(scope);
+    }
     if (trustedIssuerRepository.existsById(trustedIssuerVO.getDid())) {
       throw new ConflictException("Issuer already exists.", trustedIssuerVO.getDid());
     }
+    String type = toColumn(scopeType);
     TrustedIssuer trustedIssuer = trustedIssuerMapper.map(trustedIssuerVO);
     if (scope != null) {
-      requireScope(scope);
-      requireScopeType(scopeType);
       Optional.ofNullable(trustedIssuer.getCredentials())
           .orElseGet(List::of)
-          .forEach(credential -> credential.setScope(scope).setScopeType(scopeType));
+          .forEach(credential -> credential.setScope(scope).setScopeType(type));
     }
     TrustedIssuer persistedIssuer = trustedIssuerRepository.save(trustedIssuer);
     if (scope == null) {
       log.info("Issuer {} created", persistedIssuer.getDid());
     } else {
-      log.info(
-          "Issuer {} created for scope {}", persistedIssuer.getDid(), describe(scope, scopeType));
+      log.info("Issuer {} created for scope {}", persistedIssuer.getDid(), describe(scope, type));
     }
     if (log.isDebugEnabled()) {
       log.debug("Issuer {} created with {}", persistedIssuer.getDid(), toJson(trustedIssuerVO));
@@ -184,11 +184,14 @@ public class TrustedIssuersListController implements IssuerApi {
   @Transactional
   @Override
   public HttpResponse<TrustedIssuerVO> replaceCredentialsByScope(
-      String did, String scope, List<CredentialsVO> credentialsVO, @Nullable String scopeType) {
+      String did,
+      String scope,
+      List<CredentialsVO> credentialsVO,
+      @Nullable ScopeTypeVO scopeType) {
 
     requireScope(scope);
-    requireScopeType(scopeType);
-    String grant = describe(scope, scopeType);
+    String type = toColumn(scopeType);
+    String grant = describe(scope, type);
     TrustedIssuer trustedIssuer =
         trustedIssuerRepository
             .getByDid(did)
@@ -198,13 +201,13 @@ public class TrustedIssuersListController implements IssuerApi {
                   return trustedIssuerRepository.save(new TrustedIssuer().setDid(did));
                 });
 
-    credentialRepository.deleteByTrustedIssuerDidAndScopeAndScopeType(did, scope, scopeType);
+    credentialRepository.deleteByTrustedIssuerDidAndScopeAndScopeType(did, scope, type);
 
     credentialsVO.stream()
         .map(trustedIssuerMapper::map)
         .map(
             credential ->
-                credential.setScope(scope).setScopeType(scopeType).setTrustedIssuer(trustedIssuer))
+                credential.setScope(scope).setScopeType(type).setTrustedIssuer(trustedIssuer))
         .forEach(credentialRepository::save);
     if (credentialsVO.isEmpty()) {
       // nothing granted means the scope no longer grants anything
@@ -238,15 +241,15 @@ public class TrustedIssuersListController implements IssuerApi {
   @Transactional
   @Override
   public HttpResponse<Object> deleteCredentialsByScope(
-      String did, String scope, @Nullable String scopeType) {
+      String did, String scope, @Nullable ScopeTypeVO scopeType) {
     requireScope(scope);
-    requireScopeType(scopeType);
-    String grant = describe(scope, scopeType);
+    String type = toColumn(scopeType);
+    String grant = describe(scope, type);
     if (!trustedIssuerRepository.existsById(did)) {
       log.debug("Issuer {} has nothing to revoke for scope {}, it does not exist", did, grant);
       return HttpResponse.notFound();
     }
-    credentialRepository.deleteByTrustedIssuerDidAndScopeAndScopeType(did, scope, scopeType);
+    credentialRepository.deleteByTrustedIssuerDidAndScopeAndScopeType(did, scope, type);
     log.info("Issuer {} revoked credentials of scope {}", did, grant);
     return HttpResponse.noContent();
   }
@@ -266,16 +269,14 @@ public class TrustedIssuersListController implements IssuerApi {
   }
 
   /**
-   * Reject a blank scope type, while {@code null} stands for an untyped grant.
+   * Store a scope type by its wire value, so the column reads the same as the API.
    *
-   * <p>An empty type would silently become a type of its own that nobody addresses deliberately.
-   *
-   * @param scopeType the scope type to check
+   * @param scopeType the type of the grant, or {@code null} for an untyped grant
+   * @return the wire value, or {@code null} for an untyped grant
    */
-  private static void requireScopeType(@Nullable String scopeType) {
-    if (scopeType != null && scopeType.isBlank()) {
-      throw new IllegalArgumentException(BLANK_SCOPE_TYPE);
-    }
+  @Nullable
+  private static String toColumn(@Nullable ScopeTypeVO scopeType) {
+    return scopeType == null ? null : scopeType.getValue();
   }
 
   /**

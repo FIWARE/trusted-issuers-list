@@ -18,10 +18,14 @@ package org.fiware.iam.rest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.micronaut.http.HttpRequest;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.HttpStatus;
+import io.micronaut.http.client.HttpClient;
+import io.micronaut.http.client.annotation.Client;
 import io.micronaut.http.client.exceptions.HttpClientResponseException;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -50,11 +54,17 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   private static final String OPERATOR_CREDENTIAL = "OperatorCredential";
   private static final String USER_CREDENTIAL = "UserCredential";
   private static final String READER_CREDENTIAL = "ReaderCredential";
+  private static final String SCOPED_CREDENTIALS_PATH =
+      "/issuer/%s/credential?scope=%s&scopeType=%s";
 
   public final IssuerApiTestClient testClient;
   public final TrustedIssuerRepository repository;
   public final CredentialRepository credentialRepository;
   public final TILMapper trustedIssuerMapper;
+
+  @Inject
+  @Client("/")
+  HttpClient httpClient;
 
   private TrustedIssuerVO issuerToCreate;
   private UpdatePair issuerUpdate;
@@ -398,6 +408,37 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
       return;
     }
     fail("A grant without a scope should be rejected.");
+  }
+
+  @ParameterizedTest
+  @MethodSource("unknownScopeTypes")
+  public void deleteCredentialsByScope400_unknownScopeType(String scopeType) {
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
+    HttpRequest<?> revocation =
+        HttpRequest.DELETE(
+            String.format(SCOPED_CREDENTIALS_PATH, ISSUER_DID, ORDER_SCOPE, scopeType));
+
+    HttpClientResponseException e =
+        assertThrows(
+            HttpClientResponseException.class, () -> httpClient.toBlocking().exchange(revocation));
+
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        e.getStatus(),
+        "An unknown scope type should be rejected rather than read as untyped.");
+    assertEquals(
+        1,
+        scopedCredentials(ISSUER_DID, ORDER_SCOPE).size(),
+        "The untyped grant must survive a revocation of an unknown type.");
+  }
+
+  private static Stream<Arguments> unknownScopeTypes() {
+    return Stream.of(
+        Arguments.of(""),
+        Arguments.of("%20"),
+        Arguments.of("bogus"),
+        Arguments.of("DATASPACE_MEMBERSHIP"));
   }
 
   @Test

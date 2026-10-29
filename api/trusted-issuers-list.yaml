@@ -49,7 +49,7 @@ paths:
         '201':
           description: Successfully created the issuer.
         '400':
-          description: Invalid issuer provided, a blank scope type, or a scope type without a scope
+          description: Invalid issuer provided, an unknown scope type, or a scope type without a scope
           content:
             application/json:
               schema:
@@ -165,7 +165,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/TrustedIssuer'
         '400':
-          description: No scope provided, or a blank scope type
+          description: No scope provided, or an unknown scope type
           content:
             application/json:
               schema:
@@ -187,7 +187,7 @@ paths:
         '204':
           description: Successfully deleted the credentials of the scope.
         '400':
-          description: No scope provided, or a blank scope type
+          description: No scope provided, or an unknown scope type
           content:
             application/json:
               schema:
@@ -241,8 +241,7 @@ components:
         untyped grants are addressed, never grants of any type. Requires a scope. Not part of the
         credential itself and never exposed through the trusted-issuers-registry.
       schema:
-        type: string
-        example: dataspace-membership
+        $ref: '#/components/schemas/ScopeType'
     PageSize:
       name: pageSize
       in: query
@@ -265,6 +264,14 @@ components:
         default: 0
         example: 0
   schemas:
+    ScopeType:
+      type: string
+      description: >
+        The kind of thing a scope identifies. Untyped grants, such as the ProductOrder grants that
+        existed before types did, carry no type at all.
+      enum:
+        - dataspace-membership
+      example: dataspace-membership
     TrustedIssuersListResponse:
       type: object
       properties:

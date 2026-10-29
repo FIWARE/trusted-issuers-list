@@ -61,7 +61,10 @@ class TrustedIssuersListLoggingTest {
   @Test
   void grantingToAnUnknownIssuerLogsItsCreation() throws Exception {
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, ORDER_SCOPE, List.of(new CredentialsVO().credentialsType("UserCredential")));
+        ISSUER_DID,
+        ORDER_SCOPE,
+        List.of(new CredentialsVO().credentialsType("UserCredential")),
+        null);
 
     assertEquals(
         List.of(
@@ -73,10 +76,13 @@ class TrustedIssuersListLoggingTest {
   @Test
   void anEmptyGrantIsLoggedAsRevocation() throws Exception {
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, ORDER_SCOPE, List.of(new CredentialsVO().credentialsType("UserCredential")));
+        ISSUER_DID,
+        ORDER_SCOPE,
+        List.of(new CredentialsVO().credentialsType("UserCredential")),
+        null);
     appender.list.clear();
 
-    testClient.replaceCredentialsByScope(ISSUER_DID, ORDER_SCOPE, List.of());
+    testClient.replaceCredentialsByScope(ISSUER_DID, ORDER_SCOPE, List.of(), null);
 
     assertEquals(
         List.of("Issuer did:web:consumer.org revoked credentials of scope " + ORDER_SCOPE),

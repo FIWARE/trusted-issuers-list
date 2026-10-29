@@ -88,7 +88,7 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
   public void getIssuerV4200(TrustedIssuerVO trustedIssuer) throws Exception {
     assertEquals(
         HttpStatus.CREATED,
-        insertionClient.createTrustedIssuer(trustedIssuer, null).getStatus(),
+        insertionClient.createTrustedIssuer(trustedIssuer, null, null).getStatus(),
         "The issuer should have been initially created.");
     storedIssuer = trustedIssuer;
     getIssuerV4200();
@@ -173,7 +173,7 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
     for (int i = 10; i < 30; i++) {
       TrustedIssuerVO issuer =
           TrustedIssuerVOTestExample.build().did(String.format("did:elsi:%s", i));
-      insertionClient.createTrustedIssuer(issuer, null);
+      insertionClient.createTrustedIssuer(issuer, null, null);
       issuers.add(issuer);
     }
     HttpResponse<IssuersResponseVO> issuersResponse = testClient.getIssuersV4(null, null);
@@ -245,12 +245,12 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
     List<org.fiware.iam.til.model.CredentialsVO> credentials =
         List.of(CredentialsVOTestExample.build().validFor(null));
     insertionClient.createTrustedIssuer(
-        new TrustedIssuerVO().did(DID_HAPPYPETS).credentials(credentials), null);
+        new TrustedIssuerVO().did(DID_HAPPYPETS).credentials(credentials), null, null);
     IssuerVO unscoped = testClient.getIssuerV4(DID_HAPPYPETS).body();
 
     repository.deleteAll();
     insertionClient.replaceCredentialsByScope(
-        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials);
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials, null);
     IssuerVO scoped = testClient.getIssuerV4(DID_HAPPYPETS).body();
 
     assertEquals(
@@ -268,9 +268,9 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
     List<org.fiware.iam.til.model.CredentialsVO> credentials =
         List.of(CredentialsVOTestExample.build().validFor(null));
     insertionClient.replaceCredentialsByScope(
-        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials);
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials, null);
     insertionClient.replaceCredentialsByScope(
-        DID_HAPPYPETS, "urn:ngsi-ld:product-order:second", credentials);
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:second", credentials, null);
 
     IssuerVO issuer = testClient.getIssuerV4(DID_HAPPYPETS).body();
 

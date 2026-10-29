@@ -78,25 +78,41 @@ public class TrustedIssuersListController implements IssuerApi {
   private final ObjectMapper objectMapper;
 
   /**
-   * Returns a paginated list of DIDs of all trusted issuers, sorted alphabetically.
+   * Returns a paginated list of DIDs of trusted issuers, sorted alphabetically. With a scope, only
+   * the issuers holding that exact grant are listed, so that a reconciliation can find the grants
+   * that should no longer exist.
    *
    * @param pageSize maximum number of items per page (1-100, defaults to 10)
    * @param page zero-based page number (defaults to 0)
+   * @param scope lists only issuers granted credentials by it, or {@code null} for all issuers
+   * @param scopeType the kind of thing the scope identifies, or {@code null} for an untyped grant
    * @return paginated response containing the issuer DIDs
    */
   @Override
   public HttpResponse<TrustedIssuersListResponseVO> getIssuers(
-      @Nullable Integer pageSize, @Nullable Integer page) {
+      @Nullable Integer pageSize,
+      @Nullable Integer page,
+      @Nullable String scope,
+      @Nullable ScopeTypeVO scopeType) {
     pageSize = Optional.ofNullable(pageSize).orElse(DEFAULT_PAGE_SIZE);
     page = Optional.ofNullable(page).orElse(0);
 
     if (pageSize < MIN_PAGE_SIZE || pageSize > MAX_PAGE_SIZE) {
       throw new IllegalArgumentException("The requested page size is not supported.");
     }
+    if (scope == null && scopeType != null) {
+      throw new IllegalArgumentException(SCOPE_TYPE_WITHOUT_SCOPE);
+    }
+    if (scope != null) {
+      requireScope(scope);
+    }
 
     Sort didSort = Sort.unsorted().order(SORT_FIELD);
     Pageable pagination = Pageable.from(page, pageSize, didSort);
-    Page<TrustedIssuer> result = trustedIssuerRepository.findAll(pagination);
+    Page<TrustedIssuer> result =
+        scope == null
+            ? trustedIssuerRepository.findAll(pagination)
+            : trustedIssuerRepository.findByGrant(scope, toColumn(scopeType), pagination);
 
     List<String> dids = result.getContent().stream().map(TrustedIssuer::getDid).toList();
 

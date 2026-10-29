@@ -13,10 +13,16 @@ paths:
         - issuer
       operationId: getIssuers
       summary: Get the DIDs of all trusted issuers
-      description: Returns a paginated list of DIDs of all trusted issuers.
+      description: >
+        Returns a paginated list of DIDs of all trusted issuers. With a scope, only the issuers
+        holding credentials granted by exactly that (scope, scopeType) pair are listed, so that a
+        reconciliation can compare the grants it expects with the ones that exist. A scope type can
+        only be given together with a scope.
       parameters:
         - $ref: '#/components/parameters/PageSize'
         - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/ScopeFilter'
+        - $ref: '#/components/parameters/ScopeType'
       responses:
         '200':
           description: Successfully retrieved the list of issuer DIDs.
@@ -24,6 +30,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TrustedIssuersListResponse'
+        '400':
+          description: >
+            The page size is out of range, the scope is blank, the scope type is unknown, or a scope
+            type was given without a scope.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
     post:
       tags:
         - issuer
@@ -258,6 +272,17 @@ components:
         Identifies what granted the credentials, so that they can be revoked without affecting
         credentials granted by anything else. Not part of the credential itself and never exposed
         through the trusted-issuers-registry.
+      schema:
+        type: string
+        example: urn:ngsi-ld:product-order:5f7a1e60
+    ScopeFilter:
+      name: scope
+      in: query
+      required: false
+      description: >
+        Lists only the issuers holding credentials granted by this scope. When omitted, every issuer
+        is listed. Not part of the credential itself and never exposed through the
+        trusted-issuers-registry.
       schema:
         type: string
         example: urn:ngsi-ld:product-order:5f7a1e60

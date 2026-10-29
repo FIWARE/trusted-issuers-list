@@ -25,13 +25,17 @@ import static org.junit.jupiter.api.Assertions.fail;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.HttpStatus;
+import io.micronaut.http.client.HttpClient;
+import io.micronaut.http.client.annotation.Client;
 import io.micronaut.http.client.exceptions.HttpClientResponseException;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import jakarta.inject.Inject;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.fiware.iam.TIRv5Mapper;
 import org.fiware.iam.repository.TrustedIssuerRepository;
@@ -51,6 +55,8 @@ import org.fiware.iam.tir.v5.model.RevisionsResponseVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
@@ -105,6 +111,10 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   private final TrustedIssuerRepository repository;
   private final TIRv5Mapper tirV5Mapper;
   private final ObjectMapper objectMapper;
+
+  @Inject
+  @Client("/")
+  HttpClient httpClient;
 
   /** Mutable state fields used by the generated test spec interface methods. */
   private String didToRequest;
@@ -1040,5 +1050,60 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
         attributes.getItems().size(),
         "An untyped and a typed grant of one credential must not appear as two attributes.");
     assertEquals(1, attributes.getTotal(), "The total has to match what is listed.");
+  }
+
+  /**
+   * Path templates: {@code %1$s} is the did, {@code %2$s} an attribute id, {@code %3$s} its
+   * revision.
+   */
+  private static Stream<Arguments> registryPaths() {
+    return Stream.of(
+        Arguments.of("/v5/issuers/"),
+        Arguments.of("/v5/issuers/%1$s"),
+        Arguments.of("/v5/issuers/%1$s?version=" + VERSION_DEPRECATED),
+        Arguments.of("/v5/issuers/%1$s/attributes"),
+        Arguments.of("/v5/issuers/%1$s/attributes/%2$s"),
+        Arguments.of("/v5/issuers/%1$s/attributes/%2$s/revisions"),
+        Arguments.of("/v5/issuers/%1$s/attributes/%2$s/revisions/%3$s"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("registryPaths")
+  public void registryV5_neverRevealsGrantData(String pathTemplate) throws Exception {
+    ScopeLeakFixture.grantUnderEveryKindOfScope(insertionClient, httpClient, DID_HAPPYPETS);
+    List<String> attributeIds =
+        testClient
+            .getIssuerAttributesV5(DID_HAPPYPETS, MAX_PAGE_SIZE, null)
+            .body()
+            .getItems()
+            .stream()
+            .map(attribute -> attribute.getId())
+            .toList();
+    assertEquals(
+        ScopeLeakFixture.GRANTED_CREDENTIALS,
+        attributeIds.size(),
+        "Every granted credential has to be in the registry, or its body goes unchecked.");
+
+    // every attribute, since each one stems from a different kind of grant
+    List<String> paths =
+        attributeIds.stream()
+            .map(
+                attributeId ->
+                    String.format(
+                        pathTemplate,
+                        DID_HAPPYPETS,
+                        attributeId,
+                        testClient
+                            .getIssuerAttributeRevisionsV5(DID_HAPPYPETS, attributeId, null, null)
+                            .body()
+                            .getItems()
+                            .getFirst()
+                            .getId()))
+            .distinct()
+            .toList();
+    for (String path : paths) {
+      ScopeLeakFixture.assertNoGrantData(
+          objectMapper, path, httpClient.toBlocking().retrieve(path));
+    }
   }
 }

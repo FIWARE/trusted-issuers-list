@@ -27,8 +27,11 @@ import io.micronaut.http.HttpResponse;
 import io.micronaut.http.annotation.Controller;
 import jakarta.transaction.Transactional;
 import java.net.URI;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.fiware.iam.TILMapper;
@@ -39,6 +42,7 @@ import org.fiware.iam.repository.TrustedIssuer;
 import org.fiware.iam.repository.TrustedIssuerRepository;
 import org.fiware.iam.til.api.IssuerApi;
 import org.fiware.iam.til.model.CredentialsVO;
+import org.fiware.iam.til.model.IssuerScopeVO;
 import org.fiware.iam.til.model.ScopeTypeVO;
 import org.fiware.iam.til.model.TrustedIssuerVO;
 import org.fiware.iam.til.model.TrustedIssuersListResponseVO;
@@ -60,6 +64,13 @@ public class TrustedIssuersListController implements IssuerApi {
       "A scope is required - credentials without one cannot be revoked without affecting others.";
   private static final String SCOPE_TYPE_WITHOUT_SCOPE =
       "A scope type requires a scope - unscoped credentials cannot be addressed by type.";
+
+  private static final Comparator<Grant> GRANT_ORDER =
+      Comparator.comparing(Grant::scope)
+          .thenComparing(Grant::scopeType, Comparator.nullsFirst(Comparator.naturalOrder()));
+
+  /** One grant, keyed null-safely so that untyped credentials group together. */
+  private record Grant(String scope, @Nullable String scopeType) {}
 
   private final TrustedIssuerRepository trustedIssuerRepository;
   private final CredentialRepository credentialRepository;
@@ -255,6 +266,41 @@ public class TrustedIssuersListController implements IssuerApi {
   }
 
   /**
+   * Lists the distinct (scope, scopeType) grants an issuer holds credentials under.
+   *
+   * <p>This lets a caller tell whether something already granted the issuer its credentials, for
+   * example to react only to new grants or to report what a sweep would revoke, without reading the
+   * credentials themselves. Directly managed credentials carry no scope and are not listed.
+   *
+   * @param did the DID of the issuer
+   * @return the grants with their credential count, ordered by scope with untyped grants first, or
+   *     not found if the issuer does not exist
+   */
+  @Override
+  public HttpResponse<List<IssuerScopeVO>> getIssuerScopes(String did) {
+    if (!trustedIssuerRepository.existsById(did)) {
+      log.debug("Issuer {} has no scopes to list, it does not exist", did);
+      return HttpResponse.notFound();
+    }
+    Map<Grant, Long> credentialsPerGrant =
+        credentialRepository.findByTrustedIssuerDidAndScopeIsNotNull(did).stream()
+            .collect(
+                Collectors.groupingBy(
+                    credential -> new Grant(credential.getScope(), credential.getScopeType()),
+                    Collectors.counting()));
+    return HttpResponse.ok(
+        credentialsPerGrant.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey(GRANT_ORDER))
+            .map(
+                entry ->
+                    new IssuerScopeVO()
+                        .scope(entry.getKey().scope())
+                        .scopeType(fromColumn(entry.getKey().scopeType()))
+                        .credentialCount(Math.toIntExact(entry.getValue())))
+            .toList());
+  }
+
+  /**
    * Reject a blank scope.
    *
    * <p>An empty scope would create a grant that no revocation can address precisely, which is the
@@ -277,6 +323,17 @@ public class TrustedIssuersListController implements IssuerApi {
   @Nullable
   private static String toColumn(@Nullable ScopeTypeVO scopeType) {
     return scopeType == null ? null : scopeType.getValue();
+  }
+
+  /**
+   * Read a scope type back from its stored wire value.
+   *
+   * @param scopeType the stored wire value, or {@code null} for an untyped grant
+   * @return the scope type, or {@code null} for an untyped grant
+   */
+  @Nullable
+  private static ScopeTypeVO fromColumn(@Nullable String scopeType) {
+    return scopeType == null ? null : ScopeTypeVO.toEnum(scopeType);
   }
 
   /**

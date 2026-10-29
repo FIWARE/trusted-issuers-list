@@ -265,6 +265,7 @@
                         <useBeanValidation>false</useBeanValidation>
                         <supportAsync>false</supportAsync>
                         <jacksonDatabindNullable>false</jacksonDatabindNullable>
+                        <openApiNullable>false</openApiNullable>
                         <generateExamples>true</generateExamples>
                         <serdeable>false</serdeable>
                     </configOptions>

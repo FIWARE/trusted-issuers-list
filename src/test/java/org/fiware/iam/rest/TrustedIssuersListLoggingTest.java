@@ -28,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import org.fiware.iam.repository.TrustedIssuerRepository;
 import org.fiware.iam.til.api.IssuerApiTestClient;
 import org.fiware.iam.til.model.CredentialsVO;
+import org.fiware.iam.til.model.ScopeTypeVO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,7 @@ class TrustedIssuersListLoggingTest {
 
   private static final String ISSUER_DID = "did:web:consumer.org";
   private static final String ORDER_SCOPE = "urn:ngsi-ld:product-order:first";
+  private static final String TYPED_ORDER_SCOPE = ORDER_SCOPE + " of type dataspace-membership";
 
   public final IssuerApiTestClient testClient;
   public final TrustedIssuerRepository repository;
@@ -61,7 +63,10 @@ class TrustedIssuersListLoggingTest {
   @Test
   void grantingToAnUnknownIssuerLogsItsCreation() throws Exception {
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, ORDER_SCOPE, List.of(new CredentialsVO().credentialsType("UserCredential")));
+        ISSUER_DID,
+        ORDER_SCOPE,
+        List.of(new CredentialsVO().credentialsType("UserCredential")),
+        null);
 
     assertEquals(
         List.of(
@@ -73,15 +78,34 @@ class TrustedIssuersListLoggingTest {
   @Test
   void anEmptyGrantIsLoggedAsRevocation() throws Exception {
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, ORDER_SCOPE, List.of(new CredentialsVO().credentialsType("UserCredential")));
+        ISSUER_DID,
+        ORDER_SCOPE,
+        List.of(new CredentialsVO().credentialsType("UserCredential")),
+        null);
     appender.list.clear();
 
-    testClient.replaceCredentialsByScope(ISSUER_DID, ORDER_SCOPE, List.of());
+    testClient.replaceCredentialsByScope(ISSUER_DID, ORDER_SCOPE, List.of(), null);
 
     assertEquals(
         List.of("Issuer did:web:consumer.org revoked credentials of scope " + ORDER_SCOPE),
         infoLines(),
         "Replacing the credentials of a scope with none must not read like a grant.");
+  }
+
+  @Test
+  void aTypedGrantNamesItsType() throws Exception {
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID,
+        ORDER_SCOPE,
+        List.of(new CredentialsVO().credentialsType("UserCredential")),
+        ScopeTypeVO.DATASPACE_MEMBERSHIP);
+
+    assertEquals(
+        List.of(
+            "Issuer did:web:consumer.org created for scope " + TYPED_ORDER_SCOPE,
+            "Issuer did:web:consumer.org granted credentials for scope " + TYPED_ORDER_SCOPE),
+        infoLines(),
+        "A typed grant must be told apart from an untyped grant of the same scope.");
   }
 
   private List<String> infoLines() {

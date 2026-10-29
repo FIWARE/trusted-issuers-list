@@ -18,12 +18,18 @@ package org.fiware.iam.rest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.micronaut.http.HttpRequest;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.HttpStatus;
+import io.micronaut.http.client.HttpClient;
+import io.micronaut.http.client.annotation.Client;
 import io.micronaut.http.client.exceptions.HttpClientResponseException;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import jakarta.inject.Inject;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
@@ -47,14 +53,27 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   private static final String ISSUER_DID = "did:web:consumer.org";
   private static final String ORDER_SCOPE = "urn:ngsi-ld:product-order:first";
   private static final String OTHER_ORDER_SCOPE = "urn:ngsi-ld:product-order:second";
+  private static final String MEMBERSHIP_SCOPE_TYPE = "dataspace-membership";
   private static final String OPERATOR_CREDENTIAL = "OperatorCredential";
   private static final String USER_CREDENTIAL = "UserCredential";
   private static final String READER_CREDENTIAL = "ReaderCredential";
+  private static final String SCOPED_CREDENTIALS_PATH =
+      "/issuer/%s/credential?scope=%s&scopeType=%s";
+  private static final String CREATE_ISSUER_PATH = "/issuer?scope=%s&scopeType=%s";
+  private static final String CREATE_ISSUER_TYPE_ONLY_PATH =
+      "/issuer?scopeType=" + MEMBERSHIP_SCOPE_TYPE;
+  // a list rather than the enum's values, because the untyped grant (null) is one of them
+  private static final List<ScopeTypeVO> SCOPE_TYPES =
+      Arrays.asList(null, ScopeTypeVO.DATASPACE_MEMBERSHIP);
 
   public final IssuerApiTestClient testClient;
   public final TrustedIssuerRepository repository;
   public final CredentialRepository credentialRepository;
   public final TILMapper trustedIssuerMapper;
+
+  @Inject
+  @Client("/")
+  HttpClient httpClient;
 
   private TrustedIssuerVO issuerToCreate;
   private UpdatePair issuerUpdate;
@@ -67,7 +86,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
 
   @Override
   public void createTrustedIssuer201() throws Exception {
-    HttpResponse<?> creationResponse = testClient.createTrustedIssuer(issuerToCreate, null);
+    HttpResponse<?> creationResponse = testClient.createTrustedIssuer(issuerToCreate, null, null);
     assertEquals(
         HttpStatus.CREATED, creationResponse.getStatus(), "The issuer should have been created.");
     assertTrue(
@@ -133,7 +152,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Test
   public void createTrustedIssuer400() throws Exception {
     try {
-      testClient.createTrustedIssuer(TrustedIssuerVOTestExample.build().did(null), null);
+      testClient.createTrustedIssuer(TrustedIssuerVOTestExample.build().did(null), null, null);
     } catch (HttpClientResponseException e) {
       assertEquals(
           HttpStatus.BAD_REQUEST, e.getStatus(), "The issuer should not have been created.");
@@ -148,10 +167,10 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     TrustedIssuerVO theIssuer = TrustedIssuerVOTestExample.build();
     assertEquals(
         HttpStatus.CREATED,
-        testClient.createTrustedIssuer(theIssuer, null).getStatus(),
+        testClient.createTrustedIssuer(theIssuer, null, null).getStatus(),
         "The issuer should initially be created.");
     try {
-      testClient.createTrustedIssuer(theIssuer, null);
+      testClient.createTrustedIssuer(theIssuer, null, null);
     } catch (HttpClientResponseException e) {
       assertEquals(HttpStatus.CONFLICT, e.getStatus(), "The issuer should not have been created.");
       return;
@@ -165,7 +184,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     TrustedIssuerVO theIssuer = TrustedIssuerVOTestExample.build();
     assertEquals(
         HttpStatus.CREATED,
-        testClient.createTrustedIssuer(theIssuer, null).getStatus(),
+        testClient.createTrustedIssuer(theIssuer, null, null).getStatus(),
         "The issuer should initially be created.");
     HttpResponse<?> deletionResponse = testClient.deleteIssuerById(theIssuer.getDid());
     assertEquals(
@@ -191,7 +210,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     TrustedIssuerVO theIssuer = TrustedIssuerVOTestExample.build();
     assertEquals(
         HttpStatus.CREATED,
-        testClient.createTrustedIssuer(theIssuer, null).getStatus(),
+        testClient.createTrustedIssuer(theIssuer, null, null).getStatus(),
         "The issuer should initially be created.");
     HttpResponse<?> getResponse = testClient.getIssuer(theIssuer.getDid());
     assertEquals(HttpStatus.OK, getResponse.getStatus(), "The retrieval request should succeed.");
@@ -212,7 +231,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     for (int i = 10; i < 30; i++) {
       TrustedIssuerVO issuer =
           TrustedIssuerVOTestExample.build().did(String.format("did:elsi:%s", i));
-      testClient.createTrustedIssuer(issuer, null);
+      testClient.createTrustedIssuer(issuer, null, null);
       issuers.add(issuer);
     }
 
@@ -272,7 +291,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void updateIssuer200() throws Exception {
     assertEquals(
         HttpStatus.CREATED,
-        testClient.createTrustedIssuer(issuerUpdate.initialIssuer, null).getStatus(),
+        testClient.createTrustedIssuer(issuerUpdate.initialIssuer, null, null).getStatus(),
         "The issuer should initially be created.");
     HttpResponse<?> updateResponse =
         testClient.updateIssuer(issuerUpdate.issuerUpdate.getDid(), issuerUpdate.issuerUpdate);
@@ -334,7 +353,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void updateIssuer400() throws Exception {
     assertEquals(
         HttpStatus.CREATED,
-        testClient.createTrustedIssuer(issuerUpdate.initialIssuer, null).getStatus(),
+        testClient.createTrustedIssuer(issuerUpdate.initialIssuer, null, null).getStatus(),
         "The issuer should initially be created.");
     try {
       testClient.updateIssuer(didToUpdate, issuerUpdate.issuerUpdate);
@@ -373,7 +392,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void replaceCredentialsByScope200() throws Exception {
     HttpResponse<TrustedIssuerVO> response =
         testClient.replaceCredentialsByScope(
-            ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+            ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     assertEquals(HttpStatus.OK, response.getStatus(), "The credentials should have been granted.");
     assertEquals(
@@ -391,7 +410,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void replaceCredentialsByScope400() throws Exception {
     try {
       testClient.replaceCredentialsByScope(
-          ISSUER_DID, "", List.of(credential(OPERATOR_CREDENTIAL)));
+          ISSUER_DID, "", List.of(credential(OPERATOR_CREDENTIAL)), null);
     } catch (HttpClientResponseException e) {
       assertEquals(
           HttpStatus.BAD_REQUEST, e.getStatus(), "A grant without a scope should be rejected.");
@@ -400,13 +419,64 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     fail("A grant without a scope should be rejected.");
   }
 
+  @ParameterizedTest
+  @MethodSource("unknownScopeTypes")
+  public void deleteCredentialsByScope400_unknownScopeType(String scopeType) {
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
+    HttpRequest<?> revocation =
+        HttpRequest.DELETE(
+            String.format(SCOPED_CREDENTIALS_PATH, ISSUER_DID, ORDER_SCOPE, scopeType));
+
+    HttpClientResponseException e =
+        assertThrows(
+            HttpClientResponseException.class, () -> httpClient.toBlocking().exchange(revocation));
+
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        e.getStatus(),
+        "An unknown scope type should be rejected rather than read as untyped.");
+    assertEquals(
+        1,
+        scopedCredentials(ISSUER_DID, ORDER_SCOPE).size(),
+        "The untyped grant must survive a revocation of an unknown type.");
+  }
+
+  private static Stream<Arguments> unknownScopeTypes() {
+    return Stream.of(
+        Arguments.of(""),
+        Arguments.of("%20"),
+        Arguments.of("bogus"),
+        Arguments.of("DATASPACE_MEMBERSHIP"));
+  }
+
+  @Test
+  public void replaceCredentialsByScope200_typedGrantIsStoredApart() {
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID,
+        ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL)),
+        ScopeTypeVO.DATASPACE_MEMBERSHIP);
+
+    assertEquals(
+        1,
+        credentialRepository
+            .findByTrustedIssuerDidAndScopeAndScopeType(
+                ISSUER_DID, ORDER_SCOPE, MEMBERSHIP_SCOPE_TYPE)
+            .size(),
+        "The typed grant should be stored under the wire value of its type.");
+    assertTrue(
+        scopedCredentials(ISSUER_DID, ORDER_SCOPE).isEmpty(),
+        "A typed grant must not show up as an untyped one.");
+  }
+
   @Test
   @Override
   public void deleteCredentialsByScope204() throws Exception {
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
-    HttpResponse<?> response = testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE);
+    HttpResponse<?> response = testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null);
 
     assertEquals(HttpStatus.NO_CONTENT, response.getStatus(), "The revocation should succeed.");
     assertTrue(
@@ -420,7 +490,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Override
   public void deleteCredentialsByScope404() throws Exception {
     HttpResponse<?> response =
-        testClient.deleteCredentialsByScope("did:web:nonexistent.org", ORDER_SCOPE);
+        testClient.deleteCredentialsByScope("did:web:nonexistent.org", ORDER_SCOPE, null);
 
     assertEquals(HttpStatus.NOT_FOUND, response.getStatus(), "There is nothing to revoke.");
   }
@@ -429,7 +499,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Override
   public void deleteCredentialsByScope400() throws Exception {
     try {
-      testClient.deleteCredentialsByScope(ISSUER_DID, "");
+      testClient.deleteCredentialsByScope(ISSUER_DID, "", null);
     } catch (HttpClientResponseException e) {
       assertEquals(
           HttpStatus.BAD_REQUEST,
@@ -443,10 +513,10 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Test
   public void replaceCredentialsByScope_isIdempotent() throws Exception {
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
     HttpResponse<TrustedIssuerVO> response =
         testClient.replaceCredentialsByScope(
-            ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+            ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     assertEquals(
         1,
@@ -457,13 +527,13 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Test
   public void replaceCredentialsByScope_replacesOnlyItsOwnScope() throws Exception {
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, OTHER_ORDER_SCOPE, List.of(credential(USER_CREDENTIAL)));
+        ISSUER_DID, OTHER_ORDER_SCOPE, List.of(credential(USER_CREDENTIAL)), null);
 
     HttpResponse<TrustedIssuerVO> response =
         testClient.replaceCredentialsByScope(
-            ISSUER_DID, ORDER_SCOPE, List.of(credential(READER_CREDENTIAL)));
+            ISSUER_DID, ORDER_SCOPE, List.of(credential(READER_CREDENTIAL)), null);
 
     List<String> types =
         response.body().getCredentials().stream()
@@ -480,11 +550,11 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void deleteCredentialsByScope_keepsWhatAnotherScopeGranted() throws Exception {
     // both orders grant the very same credential - the case that used to revoke both at once
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, OTHER_ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+        ISSUER_DID, OTHER_ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
-    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE);
+    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null);
 
     TrustedIssuerVO issuer = testClient.getIssuer(ISSUER_DID).body();
     assertEquals(
@@ -502,11 +572,12 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     // a credential managed directly through the issuer endpoints carries no scope
     testClient.createTrustedIssuer(
         new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(USER_CREDENTIAL))),
+        null,
         null);
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
-    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE);
+    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null);
 
     TrustedIssuerVO issuer = testClient.getIssuer(ISSUER_DID).body();
     assertEquals(
@@ -521,7 +592,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
 
     HttpResponse<TrustedIssuerVO> response =
         testClient.replaceCredentialsByScope(
-            ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+            ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     assertEquals(HttpStatus.OK, response.getStatus());
     assertTrue(
@@ -537,7 +608,8 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
             new TrustedIssuerVO()
                 .did(ISSUER_DID)
                 .credentials(List.of(credential(OPERATOR_CREDENTIAL))),
-            ORDER_SCOPE);
+            ORDER_SCOPE,
+            null);
 
     assertEquals(HttpStatus.CREATED, response.getStatus(), "The issuer should have been created.");
     assertEquals(
@@ -550,9 +622,10 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void createTrustedIssuer_scopedCredentialsAreRevocable() throws Exception {
     testClient.createTrustedIssuer(
         new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(OPERATOR_CREDENTIAL))),
-        ORDER_SCOPE);
+        ORDER_SCOPE,
+        null);
 
-    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE);
+    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null);
 
     TrustedIssuerVO issuer = testClient.getIssuer(ISSUER_DID).body();
     assertTrue(
@@ -565,6 +638,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void createTrustedIssuer_withoutScopeStaysDirectlyManaged() throws Exception {
     testClient.createTrustedIssuer(
         new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(OPERATOR_CREDENTIAL))),
+        null,
         null);
 
     assertTrue(
@@ -589,7 +663,8 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
           new TrustedIssuerVO()
               .did(ISSUER_DID)
               .credentials(List.of(credential(OPERATOR_CREDENTIAL))),
-          "");
+          "",
+          null);
     } catch (HttpClientResponseException e) {
       assertEquals(
           HttpStatus.BAD_REQUEST, e.getStatus(), "A grant without a scope should be rejected.");
@@ -602,9 +677,10 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void updateIssuer_keepsWhatAScopeGranted() throws Exception {
     testClient.createTrustedIssuer(
         new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(USER_CREDENTIAL))),
+        null,
         null);
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     // an administrative update of the directly managed credentials
     HttpResponse<TrustedIssuerVO> response =
@@ -632,7 +708,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Test
   public void deleteIssuerById_removesGrantedCredentialsAsWell() throws Exception {
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)));
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     assertEquals(
         HttpStatus.NO_CONTENT,
@@ -643,8 +719,196 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
         "Deleting the subject of a grant removes the grant with it.");
   }
 
+  // --- grants are identified by (scope, scopeType) ----------------------------
+
+  /** Every scope type of {@link #ORDER_SCOPE}, {@code null} being the untyped grant. */
+  private static Stream<Arguments> scopeTypes() {
+    return SCOPE_TYPES.stream().map(Arguments::of);
+  }
+
+  @Test
+  public void replaceCredentialsByScope_pairsOfOneScopeCoexist() {
+    grantEveryPairAndAnUnscopedCredential();
+
+    SCOPE_TYPES.forEach(
+        scopeType ->
+            assertEquals(
+                1,
+                scopedCredentials(ISSUER_DID, ORDER_SCOPE, column(scopeType)).size(),
+                "Every type of one scope should hold its own grant, type: " + scopeType));
+    assertEquals(
+        SCOPE_TYPES.size() + 1,
+        testClient.getIssuer(ISSUER_DID).body().getCredentials().size(),
+        "The grants of one scope must not overwrite each other or the unscoped credential.");
+  }
+
+  @ParameterizedTest
+  @MethodSource("scopeTypes")
+  public void replaceCredentialsByScope_replacesOnlyItsOwnPair(ScopeTypeVO scopeType) {
+    grantEveryPairAndAnUnscopedCredential();
+
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(READER_CREDENTIAL)), scopeType);
+
+    assertEquals(
+        List.of(READER_CREDENTIAL),
+        credentialTypes(scopedCredentials(ISSUER_DID, ORDER_SCOPE, column(scopeType))),
+        "The replaced pair should hold exactly the new credentials.");
+    assertOtherPairsAndUnscopedSurvive(scopeType);
+  }
+
+  @ParameterizedTest
+  @MethodSource("scopeTypes")
+  public void deleteCredentialsByScope_deletesOnlyItsOwnPair(ScopeTypeVO scopeType) {
+    grantEveryPairAndAnUnscopedCredential();
+
+    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, scopeType);
+
+    assertTrue(
+        scopedCredentials(ISSUER_DID, ORDER_SCOPE, column(scopeType)).isEmpty(),
+        "The revoked pair should be gone.");
+    assertOtherPairsAndUnscopedSurvive(scopeType);
+  }
+
+  @ParameterizedTest
+  @MethodSource("scopeTypes")
+  public void createTrustedIssuer_attributesTheCredentialsToTheExactPair(ScopeTypeVO scopeType) {
+    testClient.createTrustedIssuer(
+        new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(OPERATOR_CREDENTIAL))),
+        ORDER_SCOPE,
+        scopeType);
+
+    otherScopeTypes(scopeType)
+        .forEach(
+            otherType -> {
+              assertTrue(
+                  scopedCredentials(ISSUER_DID, ORDER_SCOPE, column(otherType)).isEmpty(),
+                  "The credentials must not be attributed to another type: " + otherType);
+              testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, otherType);
+            });
+    assertEquals(
+        1,
+        scopedCredentials(ISSUER_DID, ORDER_SCOPE, column(scopeType)).size(),
+        "The credentials should belong to the exact pair and survive revoking any other type.");
+
+    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, scopeType);
+
+    assertTrue(
+        scopedCredentials(ISSUER_DID, ORDER_SCOPE, column(scopeType)).isEmpty(),
+        "The credentials should be revocable through their own pair.");
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidScopeTypeRequests")
+  public void scopedRequest400_invalidScopeType(HttpRequest<?> request) {
+    HttpClientResponseException e =
+        assertThrows(
+            HttpClientResponseException.class, () -> httpClient.toBlocking().exchange(request));
+
+    assertEquals(HttpStatus.BAD_REQUEST, e.getStatus(), "The scope type should be rejected.");
+    assertTrue(
+        repository.getByDid(ISSUER_DID).isEmpty(),
+        "A rejected request must not create the issuer.");
+  }
+
+  private static Stream<Arguments> invalidScopeTypeRequests() {
+    String credentialsPath = String.format(SCOPED_CREDENTIALS_PATH, ISSUER_DID, ORDER_SCOPE, "");
+    TrustedIssuerVO issuer =
+        new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(OPERATOR_CREDENTIAL)));
+    return Stream.of(
+        Arguments.of(HttpRequest.PUT(credentialsPath, List.of(credential(OPERATOR_CREDENTIAL)))),
+        Arguments.of(HttpRequest.DELETE(credentialsPath)),
+        Arguments.of(HttpRequest.POST(String.format(CREATE_ISSUER_PATH, ORDER_SCOPE, ""), issuer)),
+        Arguments.of(HttpRequest.POST(CREATE_ISSUER_TYPE_ONLY_PATH, issuer)));
+  }
+
+  @Test
+  public void updateIssuer_keepsWhatATypedScopeGranted() {
+    testClient.createTrustedIssuer(
+        new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(USER_CREDENTIAL))),
+        null,
+        null);
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID,
+        ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL)),
+        ScopeTypeVO.DATASPACE_MEMBERSHIP);
+
+    HttpResponse<TrustedIssuerVO> response =
+        testClient.updateIssuer(
+            ISSUER_DID,
+            new TrustedIssuerVO()
+                .did(ISSUER_DID)
+                .credentials(List.of(credential(READER_CREDENTIAL))));
+
+    assertEquals(
+        List.of(OPERATOR_CREDENTIAL, READER_CREDENTIAL),
+        response.body().getCredentials().stream()
+            .map(CredentialsVO::getCredentialsType)
+            .sorted()
+            .toList(),
+        "The update should leave the typed grant alone.");
+    assertEquals(
+        1,
+        scopedCredentials(ISSUER_DID, ORDER_SCOPE, MEMBERSHIP_SCOPE_TYPE).size(),
+        "The grant should still be attributed to its scope and type.");
+  }
+
+  @Test
+  public void replaceCredentialsByScope_withoutTypeIsPersistedUntyped() {
+    // the shape of every grant written before scope types existed
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
+
+    List<Credential> untyped = scopedCredentials(ISSUER_DID, ORDER_SCOPE);
+    assertEquals(1, untyped.size(), "The untyped grant should be found by a null type.");
+    assertNull(untyped.get(0).getScopeType(), "A grant without a type should store no type.");
+  }
+
+  private void grantEveryPairAndAnUnscopedCredential() {
+    testClient.createTrustedIssuer(
+        new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(USER_CREDENTIAL))),
+        null,
+        null);
+    SCOPE_TYPES.forEach(
+        scopeType ->
+            testClient.replaceCredentialsByScope(
+                ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), scopeType));
+  }
+
+  private void assertOtherPairsAndUnscopedSurvive(ScopeTypeVO changedType) {
+    otherScopeTypes(changedType)
+        .forEach(
+            otherType ->
+                assertEquals(
+                    List.of(OPERATOR_CREDENTIAL),
+                    credentialTypes(scopedCredentials(ISSUER_DID, ORDER_SCOPE, column(otherType))),
+                    "Another type of the same scope must stay untouched: " + otherType));
+    assertTrue(
+        testClient.getIssuer(ISSUER_DID).body().getCredentials().stream()
+            .map(CredentialsVO::getCredentialsType)
+            .anyMatch(USER_CREDENTIAL::equals),
+        "The unscoped credential must stay untouched.");
+  }
+
+  private static Stream<ScopeTypeVO> otherScopeTypes(ScopeTypeVO scopeType) {
+    return SCOPE_TYPES.stream().filter(other -> !Objects.equals(other, scopeType));
+  }
+
+  private static String column(ScopeTypeVO scopeType) {
+    return scopeType == null ? null : scopeType.getValue();
+  }
+
+  private static List<String> credentialTypes(List<Credential> credentials) {
+    return credentials.stream().map(Credential::getCredentialsType).toList();
+  }
+
   private List<Credential> scopedCredentials(String did, String scope) {
-    return credentialRepository.findByTrustedIssuerDidAndScope(did, scope);
+    return scopedCredentials(did, scope, null);
+  }
+
+  private List<Credential> scopedCredentials(String did, String scope, String scopeType) {
+    return credentialRepository.findByTrustedIssuerDidAndScopeAndScopeType(did, scope, scopeType);
   }
 
   private static CredentialsVO credential(String credentialsType) {

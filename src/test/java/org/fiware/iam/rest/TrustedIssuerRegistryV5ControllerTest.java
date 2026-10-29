@@ -27,6 +27,7 @@ import io.micronaut.http.HttpResponse;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.client.exceptions.HttpClientResponseException;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.List;
@@ -38,6 +39,7 @@ import org.fiware.iam.til.api.IssuerApiTestClient;
 import org.fiware.iam.til.model.ClaimVOTestExample;
 import org.fiware.iam.til.model.CredentialsVO;
 import org.fiware.iam.til.model.CredentialsVOTestExample;
+import org.fiware.iam.til.model.ScopeTypeVO;
 import org.fiware.iam.til.model.TrustedIssuerVO;
 import org.fiware.iam.til.model.TrustedIssuerVOTestExample;
 import org.fiware.iam.tir.v5.api.Tirv5ApiTestClient;
@@ -67,6 +69,8 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
 
   /** Standard DID used in most single-issuer test cases. */
   private static final String DID_HAPPYPETS = String.format(DID_TEMPLATE, "happypets");
+
+  private static final String ORDER_SCOPE = "urn:ngsi-ld:product-order:first";
 
   /** A DID that is never inserted, used to test 404 responses. */
   private static final String DID_NON_EXISTENT = "did:elsi:does-not-exist";
@@ -977,6 +981,64 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
         1,
         attributes.getItems().size(),
         "Two grants of one credential must not appear as two attributes with the same id.");
+    assertEquals(1, attributes.getTotal(), "The total has to match what is listed.");
+  }
+
+  @Test
+  public void getIssuerAttributesV5_scopeTypeChangesNeitherIdNorBody() throws Exception {
+    List<CredentialsVO> credentials = List.of(CredentialsVOTestExample.build().validFor(null));
+    insertionClient.replaceCredentialsByScope(DID_HAPPYPETS, ORDER_SCOPE, credentials, null);
+    String untypedId =
+        testClient
+            .getIssuerAttributesV5(DID_HAPPYPETS, null, null)
+            .body()
+            .getItems()
+            .getFirst()
+            .getId();
+    AttributeDetailsVO untyped = testClient.getIssuerAttributeV5(DID_HAPPYPETS, untypedId).body();
+
+    repository.deleteAll();
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, ORDER_SCOPE, credentials, ScopeTypeVO.DATASPACE_MEMBERSHIP);
+    String typedId =
+        testClient
+            .getIssuerAttributesV5(DID_HAPPYPETS, null, null)
+            .body()
+            .getItems()
+            .getFirst()
+            .getId();
+    AttributeDetailsVO typed = testClient.getIssuerAttributeV5(DID_HAPPYPETS, typedId).body();
+
+    assertEquals(untypedId, typedId, "The scope type must not change the attribute id.");
+    assertEquals(
+        untyped.getAttribute().getBody(),
+        typed.getAttribute().getBody(),
+        "The scope type must not appear in the attribute body - the registry is world-readable.");
+    assertEquals(
+        untyped.getAttribute().getHash(),
+        typed.getAttribute().getHash(),
+        "The scope type must not change the hash.");
+    assertFalse(
+        new String(
+                Base64.getDecoder().decode(typed.getAttribute().getBody()), StandardCharsets.UTF_8)
+            .contains(ScopeTypeVO.DATASPACE_MEMBERSHIP.getValue()),
+        "The decoded body must not carry the scope type.");
+  }
+
+  @Test
+  public void getIssuerAttributesV5_deduplicatesWhatTwoTypesOfOneScopeGranted() throws Exception {
+    List<CredentialsVO> credentials = List.of(CredentialsVOTestExample.build().validFor(null));
+    insertionClient.replaceCredentialsByScope(DID_HAPPYPETS, ORDER_SCOPE, credentials, null);
+    insertionClient.replaceCredentialsByScope(
+        DID_HAPPYPETS, ORDER_SCOPE, credentials, ScopeTypeVO.DATASPACE_MEMBERSHIP);
+
+    AttributesResponseVO attributes =
+        testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
+
+    assertEquals(
+        1,
+        attributes.getItems().size(),
+        "An untyped and a typed grant of one credential must not appear as two attributes.");
     assertEquals(1, attributes.getTotal(), "The total has to match what is listed.");
   }
 }

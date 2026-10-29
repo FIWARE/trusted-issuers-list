@@ -198,6 +198,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /issuer/{did}/scopes:
+    get:
+      tags:
+        - issuer
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      operationId: getIssuerScopes
+      summary: List the grants an issuer holds credentials under
+      description: >
+        Lists every distinct (scope, scope type) pair the issuer holds credentials under, with the
+        number of credentials each one granted, sorted by scope and then type, untyped first. This
+        lets a caller tell whether something already granted the issuer its credentials without
+        reading them. Credentials managed directly through the issuer endpoints carry no scope and
+        are not listed, so an issuer that only holds those returns an empty list. The list is not
+        paginated, because an issuer holds few grants.
+      responses:
+        '200':
+          description: Successfully retrieved the grants of the issuer.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IssuerScope'
+        '404':
+          description: No such issuer exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
 
 components:
   parameters:
@@ -272,6 +302,30 @@ components:
       enum:
         - dataspace-membership
       example: dataspace-membership
+    IssuerScope:
+      type: object
+      description: >
+        One grant an issuer holds credentials under. Internal to the management API and never
+        exposed through the trusted-issuers-registry.
+      required:
+        - scope
+        - credentialCount
+      properties:
+        scope:
+          type: string
+          description: Identifies what granted the credentials.
+          example: urn:ngsi-ld:product-order:5f7a1e60
+        scopeType:
+          # nullable, or the generator initialises it to an (impossible) enum instance
+          nullable: true
+          description: The kind of thing the scope identifies, absent for an untyped grant.
+          allOf:
+            - $ref: '#/components/schemas/ScopeType'
+        credentialCount:
+          type: integer
+          minimum: 1
+          description: Number of credentials the issuer holds under this grant.
+          example: 2
     TrustedIssuersListResponse:
       type: object
       properties:

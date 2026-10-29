@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.fiware.iam.TILMapper;
@@ -62,6 +63,11 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   private static final String CREATE_ISSUER_PATH = "/issuer?scope=%s&scopeType=%s";
   private static final String CREATE_ISSUER_TYPE_ONLY_PATH =
       "/issuer?scopeType=" + MEMBERSHIP_SCOPE_TYPE;
+  private static final String ISSUER_SCOPES_PATH = "/issuer/%s/scopes";
+  private static final String SCOPE_TYPE_PROPERTY = "scopeType";
+  private static final int ORDER_SCOPE_CREDENTIALS = 2;
+  private static final int MEMBERSHIP_CREDENTIALS = 1;
+  private static final int OTHER_ORDER_CREDENTIALS = 1;
   // a list rather than the enum's values, because the untyped grant (null) is one of them
   private static final List<ScopeTypeVO> SCOPE_TYPES =
       Arrays.asList(null, ScopeTypeVO.DATASPACE_MEMBERSHIP);
@@ -78,6 +84,8 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   private TrustedIssuerVO issuerToCreate;
   private UpdatePair issuerUpdate;
   private String didToUpdate;
+  private Consumer<IssuerApiTestClient> grantsToSetUp;
+  private List<IssuerScopeVO> expectedScopes;
 
   @BeforeEach
   public void cleanUp() {
@@ -863,6 +871,141 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     List<Credential> untyped = scopedCredentials(ISSUER_DID, ORDER_SCOPE);
     assertEquals(1, untyped.size(), "The untyped grant should be found by a null type.");
     assertNull(untyped.get(0).getScopeType(), "A grant without a type should store no type.");
+  }
+
+  // --- listing the grants of an issuer -----------------------------------------
+
+  @Override
+  public void getIssuerScopes200() throws Exception {
+    grantsToSetUp.accept(testClient);
+
+    HttpResponse<List<IssuerScopeVO>> response = testClient.getIssuerScopes(ISSUER_DID);
+
+    assertEquals(HttpStatus.OK, response.getStatus(), "The grants should be listed.");
+    assertEquals(
+        expectedScopes,
+        response.body(),
+        "Exactly the distinct grants should be listed, in order, with their credential count.");
+  }
+
+  @ParameterizedTest
+  @MethodSource("issuerScopes")
+  public void getIssuerScopes200(Consumer<IssuerApiTestClient> grants, List<IssuerScopeVO> expected)
+      throws Exception {
+    grantsToSetUp = grants;
+    expectedScopes = expected;
+    getIssuerScopes200();
+  }
+
+  private static Stream<Arguments> issuerScopes() {
+    IssuerScopeVO untypedOrder = issuerScope(ORDER_SCOPE, null, ORDER_SCOPE_CREDENTIALS);
+    IssuerScopeVO membership =
+        issuerScope(ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP, MEMBERSHIP_CREDENTIALS);
+    IssuerScopeVO otherOrder = issuerScope(OTHER_ORDER_SCOPE, null, OTHER_ORDER_CREDENTIALS);
+    return Stream.of(
+        Arguments.of(
+            (Consumer<IssuerApiTestClient>)
+                TrustedIssuersListControllerTest::grantSeveralPairsAndAnUnscopedCredential,
+            List.of(untypedOrder, membership, otherOrder)),
+        Arguments.of(
+            (Consumer<IssuerApiTestClient>)
+                client ->
+                    client.createTrustedIssuer(
+                        new TrustedIssuerVO()
+                            .did(ISSUER_DID)
+                            .credentials(List.of(credential(USER_CREDENTIAL))),
+                        null,
+                        null),
+            List.of()),
+        Arguments.of(
+            (Consumer<IssuerApiTestClient>)
+                client -> {
+                  grantSeveralPairsAndAnUnscopedCredential(client);
+                  client.deleteCredentialsByScope(
+                      ISSUER_DID, ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP);
+                },
+            List.of(untypedOrder, otherOrder)),
+        Arguments.of(
+            (Consumer<IssuerApiTestClient>)
+                client -> {
+                  grantSeveralPairsAndAnUnscopedCredential(client);
+                  client.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null);
+                },
+            List.of(membership, otherOrder)),
+        Arguments.of(
+            (Consumer<IssuerApiTestClient>)
+                client ->
+                    client.createTrustedIssuer(
+                        new TrustedIssuerVO()
+                            .did(ISSUER_DID)
+                            .credentials(
+                                List.of(
+                                    credential(OPERATOR_CREDENTIAL),
+                                    credential(READER_CREDENTIAL))),
+                        ORDER_SCOPE,
+                        ScopeTypeVO.DATASPACE_MEMBERSHIP),
+            List.of(
+                issuerScope(
+                    ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP, ORDER_SCOPE_CREDENTIALS))));
+  }
+
+  @Test
+  @Override
+  public void getIssuerScopes404() throws Exception {
+    HttpResponse<List<IssuerScopeVO>> response =
+        testClient.getIssuerScopes("did:web:nonexistent.org");
+
+    assertEquals(HttpStatus.NOT_FOUND, response.getStatus(), "An unknown issuer has no grants.");
+  }
+
+  @Test
+  public void getIssuerScopes200_untypedGrantCarriesNoType() {
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
+
+    String body = httpClient.toBlocking().retrieve(String.format(ISSUER_SCOPES_PATH, ISSUER_DID));
+
+    assertFalse(
+        body.contains(SCOPE_TYPE_PROPERTY),
+        "An untyped grant should omit the type rather than send null: " + body);
+  }
+
+  /**
+   * One unscoped credential, two credentials under the untyped {@link #ORDER_SCOPE}, one under its
+   * membership type, and one with two claims under {@link #OTHER_ORDER_SCOPE}, granted out of
+   * order. The counts differ per pair and from the claim count.
+   */
+  private static void grantSeveralPairsAndAnUnscopedCredential(IssuerApiTestClient client) {
+    client.createTrustedIssuer(
+        new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(USER_CREDENTIAL))),
+        null,
+        null);
+    client.replaceCredentialsByScope(
+        ISSUER_DID,
+        OTHER_ORDER_SCOPE,
+        List.of(
+            new CredentialsVO()
+                .credentialsType(OPERATOR_CREDENTIAL)
+                .claims(
+                    List.of(
+                        new ClaimVO().name("roles").allowedValues(List.of("OPERATOR")),
+                        new ClaimVO().name("level").allowedValues(List.of("GOLD"))))),
+        null);
+    client.replaceCredentialsByScope(
+        ISSUER_DID,
+        ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL)),
+        ScopeTypeVO.DATASPACE_MEMBERSHIP);
+    client.replaceCredentialsByScope(
+        ISSUER_DID,
+        ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL), credential(READER_CREDENTIAL)),
+        null);
+  }
+
+  private static IssuerScopeVO issuerScope(
+      String scope, ScopeTypeVO scopeType, int credentialCount) {
+    return new IssuerScopeVO().scope(scope).scopeType(scopeType).credentialCount(credentialCount);
   }
 
   private void grantEveryPairAndAnUnscopedCredential() {

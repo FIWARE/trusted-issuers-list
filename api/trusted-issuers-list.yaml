@@ -34,9 +34,11 @@ paths:
         the body is attributed to it and can be revoked through it later - an issuer is usually
         created because something granted it a credential in the first place. Without a scope the
         credentials are managed directly through the issuer endpoints and no revocation will ever
-        remove them, so pass the scope whenever the credentials come from a grant.
+        remove them, so pass the scope whenever the credentials come from a grant. A scope type can
+        only be given together with a scope.
       parameters:
         - $ref: '#/components/parameters/OptionalScope'
+        - $ref: '#/components/parameters/ScopeType'
       requestBody:
         required: true
         content:
@@ -47,7 +49,7 @@ paths:
         '201':
           description: Successfully created the issuer.
         '400':
-          description: Invalid issuer provided
+          description: Invalid issuer provided, a blank scope type, or a scope type without a scope
           content:
             application/json:
               schema:
@@ -135,6 +137,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/Scope'
+        - $ref: '#/components/parameters/ScopeType'
       operationId: replaceCredentialsByScope
       summary: Replace the credentials granted by one scope
       description: >
@@ -144,7 +147,8 @@ paths:
         another grant still requires. Replacing rather than appending makes the call idempotent, which
         matters because the callers react to notifications that are redelivered on failure. The issuer
         is created if it does not exist yet. Credentials created through the issuer endpoints carry no
-        scope and are never touched by this operation.
+        scope and are never touched by this operation. A grant is identified by scope and scope type
+        together, so grants of the same scope but another type are left untouched as well.
       requestBody:
         required: true
         content:
@@ -161,7 +165,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/TrustedIssuer'
         '400':
-          description: No scope provided
+          description: No scope provided, or a blank scope type
           content:
             application/json:
               schema:
@@ -172,17 +176,18 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Id'
         - $ref: '#/components/parameters/Scope'
+        - $ref: '#/components/parameters/ScopeType'
       operationId: deleteCredentialsByScope
       summary: Delete the credentials granted by one scope
       description: >
-        Removes the credentials granted by the given scope and nothing else. The issuer itself is kept,
-        even when no credential remains, so that an issuer somebody else manages is not deleted as a
-        side effect.
+        Removes the credentials granted by the given scope and scope type and nothing else. The issuer
+        itself is kept, even when no credential remains, so that an issuer somebody else manages is not
+        deleted as a side effect.
       responses:
         '204':
           description: Successfully deleted the credentials of the scope.
         '400':
-          description: No scope provided
+          description: No scope provided, or a blank scope type
           content:
             application/json:
               schema:
@@ -226,6 +231,18 @@ components:
       schema:
         type: string
         example: urn:ngsi-ld:product-order:5f7a1e60
+    ScopeType:
+      name: scopeType
+      in: query
+      required: false
+      description: >
+        The kind of thing the scope identifies, e.g. a data-space membership rather than a
+        ProductOrder. A grant is identified by scope and scope type together. When omitted, only
+        untyped grants are addressed, never grants of any type. Requires a scope. Not part of the
+        credential itself and never exposed through the trusted-issuers-registry.
+      schema:
+        type: string
+        example: dataspace-membership
     PageSize:
       name: pageSize
       in: query

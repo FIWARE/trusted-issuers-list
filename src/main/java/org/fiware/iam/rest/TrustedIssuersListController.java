@@ -57,6 +57,10 @@ public class TrustedIssuersListController implements IssuerApi {
   private static final String SORT_FIELD = "did";
   private static final String NO_SCOPE_PROVIDED =
       "A scope is required - credentials without one cannot be revoked without affecting others.";
+  private static final String BLANK_SCOPE_TYPE =
+      "A scope type must not be blank - omit it to address untyped grants.";
+  private static final String SCOPE_TYPE_WITHOUT_SCOPE =
+      "A scope type requires a scope - unscoped credentials cannot be addressed by type.";
 
   private final TrustedIssuerRepository trustedIssuerRepository;
   private final CredentialRepository credentialRepository;
@@ -104,27 +108,34 @@ public class TrustedIssuersListController implements IssuerApi {
    *
    * @param trustedIssuerVO the issuer and the credentials to create it with
    * @param scope what grants those credentials, or {@code null} if they are managed directly
+   * @param scopeType the kind of thing the scope identifies, or {@code null} for an untyped grant
    * @return created, with the location of the issuer in the registry
    */
   @Transactional
   @Override
   public HttpResponse<Object> createTrustedIssuer(
-      TrustedIssuerVO trustedIssuerVO, @Nullable String scope) {
+      TrustedIssuerVO trustedIssuerVO, @Nullable String scope, @Nullable String scopeType) {
+    if (scope == null && scopeType != null) {
+      // no scoped operation could ever address an unscoped credential by its type
+      throw new IllegalArgumentException(SCOPE_TYPE_WITHOUT_SCOPE);
+    }
     if (trustedIssuerRepository.existsById(trustedIssuerVO.getDid())) {
       throw new ConflictException("Issuer already exists.", trustedIssuerVO.getDid());
     }
     TrustedIssuer trustedIssuer = trustedIssuerMapper.map(trustedIssuerVO);
     if (scope != null) {
       requireScope(scope);
+      requireScopeType(scopeType);
       Optional.ofNullable(trustedIssuer.getCredentials())
           .orElseGet(List::of)
-          .forEach(credential -> credential.setScope(scope));
+          .forEach(credential -> credential.setScope(scope).setScopeType(scopeType));
     }
     TrustedIssuer persistedIssuer = trustedIssuerRepository.save(trustedIssuer);
     if (scope == null) {
       log.info("Issuer {} created", persistedIssuer.getDid());
     } else {
-      log.info("Issuer {} created for scope {}", persistedIssuer.getDid(), scope);
+      log.info(
+          "Issuer {} created for scope {}", persistedIssuer.getDid(), describe(scope, scopeType));
     }
     if (log.isDebugEnabled()) {
       log.debug("Issuer {} created with {}", persistedIssuer.getDid(), toJson(trustedIssuerVO));
@@ -156,10 +167,10 @@ public class TrustedIssuersListController implements IssuerApi {
   /**
    * Sets the credentials granted by one scope to exactly the ones provided.
    *
-   * <p>Credentials granted by another scope, and credentials managed directly through the issuer
-   * endpoints (which carry no scope), are left untouched. Replacing rather than appending makes the
-   * operation idempotent: the callers react to notifications that are redelivered on failure, so
-   * the same grant may well arrive twice.
+   * <p>Credentials granted by another (scope, scopeType) pair, and credentials managed directly
+   * through the issuer endpoints (which carry no scope), are left untouched. Replacing rather than
+   * appending makes the operation idempotent: the callers react to notifications that are
+   * redelivered on failure, so the same grant may well arrive twice.
    *
    * <p>The issuer is created when it is not known yet, which spares every caller a create-or-update
    * branch - and the race that comes with it.
@@ -167,37 +178,42 @@ public class TrustedIssuersListController implements IssuerApi {
    * @param did the DID of the issuer
    * @param scope what grants the credentials, e.g. a ProductOrder id
    * @param credentialsVO the credentials this scope grants, possibly empty
+   * @param scopeType the kind of thing the scope identifies, {@code null} addresses untyped grants
    * @return the issuer including all of its credentials
    */
   @Transactional
   @Override
   public HttpResponse<TrustedIssuerVO> replaceCredentialsByScope(
-      String did, String scope, List<CredentialsVO> credentialsVO) {
+      String did, String scope, List<CredentialsVO> credentialsVO, @Nullable String scopeType) {
 
     requireScope(scope);
+    requireScopeType(scopeType);
+    String grant = describe(scope, scopeType);
     TrustedIssuer trustedIssuer =
         trustedIssuerRepository
             .getByDid(did)
             .orElseGet(
                 () -> {
-                  log.info("Issuer {} created for scope {}", did, scope);
+                  log.info("Issuer {} created for scope {}", did, grant);
                   return trustedIssuerRepository.save(new TrustedIssuer().setDid(did));
                 });
 
-    credentialRepository.deleteByTrustedIssuerDidAndScopeAndScopeType(did, scope, null);
+    credentialRepository.deleteByTrustedIssuerDidAndScopeAndScopeType(did, scope, scopeType);
 
     credentialsVO.stream()
         .map(trustedIssuerMapper::map)
-        .map(credential -> credential.setScope(scope).setTrustedIssuer(trustedIssuer))
+        .map(
+            credential ->
+                credential.setScope(scope).setScopeType(scopeType).setTrustedIssuer(trustedIssuer))
         .forEach(credentialRepository::save);
     if (credentialsVO.isEmpty()) {
       // nothing granted means the scope no longer grants anything
-      log.info("Issuer {} revoked credentials of scope {}", did, scope);
+      log.info("Issuer {} revoked credentials of scope {}", did, grant);
     } else {
-      log.info("Issuer {} granted credentials for scope {}", did, scope);
+      log.info("Issuer {} granted credentials for scope {}", did, grant);
     }
     if (log.isDebugEnabled()) {
-      log.debug("Issuer {} granted for scope {}: {}", did, scope, toJson(credentialsVO));
+      log.debug("Issuer {} granted for scope {}: {}", did, grant, toJson(credentialsVO));
     }
 
     return trustedIssuerRepository
@@ -208,7 +224,7 @@ public class TrustedIssuersListController implements IssuerApi {
   }
 
   /**
-   * Deletes the credentials granted by one scope and nothing else.
+   * Deletes the credentials granted by one (scope, scopeType) pair and nothing else.
    *
    * <p>The issuer itself is kept even when no credential remains, so that an issuer somebody else
    * manages is not removed as a side effect of a revocation. An issuer without credentials is not
@@ -216,18 +232,22 @@ public class TrustedIssuersListController implements IssuerApi {
    *
    * @param did the DID of the issuer
    * @param scope what granted the credentials, e.g. a ProductOrder id
+   * @param scopeType the kind of thing the scope identifies, {@code null} addresses untyped grants
    * @return no content, or not found if the issuer does not exist
    */
   @Transactional
   @Override
-  public HttpResponse<Object> deleteCredentialsByScope(String did, String scope) {
+  public HttpResponse<Object> deleteCredentialsByScope(
+      String did, String scope, @Nullable String scopeType) {
     requireScope(scope);
+    requireScopeType(scopeType);
+    String grant = describe(scope, scopeType);
     if (!trustedIssuerRepository.existsById(did)) {
-      log.debug("Issuer {} has nothing to revoke for scope {}, it does not exist", did, scope);
+      log.debug("Issuer {} has nothing to revoke for scope {}, it does not exist", did, grant);
       return HttpResponse.notFound();
     }
-    credentialRepository.deleteByTrustedIssuerDidAndScopeAndScopeType(did, scope, null);
-    log.info("Issuer {} revoked credentials of scope {}", did, scope);
+    credentialRepository.deleteByTrustedIssuerDidAndScopeAndScopeType(did, scope, scopeType);
+    log.info("Issuer {} revoked credentials of scope {}", did, grant);
     return HttpResponse.noContent();
   }
 
@@ -243,6 +263,30 @@ public class TrustedIssuersListController implements IssuerApi {
     if (scope == null || scope.isBlank()) {
       throw new IllegalArgumentException(NO_SCOPE_PROVIDED);
     }
+  }
+
+  /**
+   * Reject a blank scope type, while {@code null} stands for an untyped grant.
+   *
+   * <p>An empty type would silently become a type of its own that nobody addresses deliberately.
+   *
+   * @param scopeType the scope type to check
+   */
+  private static void requireScopeType(@Nullable String scopeType) {
+    if (scopeType != null && scopeType.isBlank()) {
+      throw new IllegalArgumentException(BLANK_SCOPE_TYPE);
+    }
+  }
+
+  /**
+   * Render a grant for the log, keeping untyped grants as they were logged before types existed.
+   *
+   * @param scope the scope of the grant
+   * @param scopeType the type of the grant, or {@code null}
+   * @return the scope, followed by its type if there is one
+   */
+  private static String describe(String scope, @Nullable String scopeType) {
+    return scopeType == null ? scope : scope + " of type " + scopeType;
   }
 
   /**
@@ -265,7 +309,8 @@ public class TrustedIssuersListController implements IssuerApi {
    * <p>Credentials that were granted by a scope keep their own lifecycle and are <b>not</b>
    * touched: they belong to whatever granted them, and only that grant - or the deletion of the
    * whole issuer - may remove them. Replacing them here would let an unrelated administrative
-   * update revoke access that an order paid for.
+   * update revoke access that an order paid for. Typed grants always carry a scope, so they are
+   * kept as well.
    *
    * @param did the DID of the issuer
    * @param trustedIssuerVO the issuer with the credentials it is managed with directly

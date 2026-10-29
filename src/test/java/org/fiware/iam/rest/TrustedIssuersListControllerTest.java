@@ -644,7 +644,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   }
 
   private List<Credential> scopedCredentials(String did, String scope) {
-    return credentialRepository.findByTrustedIssuerDidAndScope(did, scope);
+    return credentialRepository.findByTrustedIssuerDidAndScopeAndScopeType(did, scope, null);
   }
 
   private static CredentialsVO credential(String credentialsType) {

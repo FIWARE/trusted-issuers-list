@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="006-add-scope-type-to-credential" author="seamware">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="credential"/>
+            <not>
+                <columnExists tableName="credential" columnName="scope_type"/>
+            </not>
+        </preConditions>
+
+        <!-- Types a grant - data-space membership vs ProductOrder, for example - without reserving a
+             prefix in scope. Null means untyped, which every row written before this version is.
+             Not indexed: lookups already go through idx_credential_scope and the column has few
+             distinct values. -->
+        <addColumn tableName="credential">
+            <column name="scope_type" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="007-tag-v0.0.7" author="seamware">
+        <tagDatabase tag="v0.0.7"/>
+    </changeSet>
+
+</databaseChangeLog>

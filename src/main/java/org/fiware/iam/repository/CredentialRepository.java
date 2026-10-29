@@ -16,26 +16,83 @@
  */
 package org.fiware.iam.repository;
 
+import io.micronaut.core.annotation.Nullable;
 import io.micronaut.data.repository.PageableRepository;
+import java.util.List;
 
 /** Extension of the base repository to support {@link Credential} */
 public interface CredentialRepository extends PageableRepository<Credential, Integer> {
 
   /**
-   * Find the credentials an issuer was granted by one scope.
+   * Find the credentials an issuer was granted by one (scope, scopeType) pair. A {@code null}
+   * scopeType matches only untyped grants, never "any type".
    *
    * @param did the DID of the issuer
    * @param scope what granted the credentials
-   * @return the credentials granted by that scope, empty if none were
+   * @param scopeType the kind of scope, {@code null} for untyped
+   * @return the credentials granted by that pair, empty if none were
    */
-  java.util.List<Credential> findByTrustedIssuerDidAndScope(String did, String scope);
+  default List<Credential> findByTrustedIssuerDidAndScopeAndScopeType(
+      String did, String scope, @Nullable String scopeType) {
+    // A derived query would bind null as "scope_type = NULL", which never matches.
+    return scopeType == null
+        ? findByTrustedIssuerDidAndScopeAndScopeTypeIsNull(did, scope)
+        : findByTrustedIssuerDidAndScopeAndScopeTypeEquals(did, scope, scopeType);
+  }
 
   /**
-   * Delete the credentials an issuer was granted by one scope, leaving every other credential -
-   * including the unscoped ones - in place.
+   * Delete the credentials an issuer was granted by one (scope, scopeType) pair, leaving every
+   * other credential - including the unscoped ones - in place. A {@code null} scopeType matches
+   * only untyped grants.
+   *
+   * @param did the DID of the issuer
+   * @param scope what granted the credentials
+   * @param scopeType the kind of scope, {@code null} for untyped
+   */
+  default void deleteByTrustedIssuerDidAndScopeAndScopeType(
+      String did, String scope, @Nullable String scopeType) {
+    if (scopeType == null) {
+      deleteByTrustedIssuerDidAndScopeAndScopeTypeIsNull(did, scope);
+    } else {
+      deleteByTrustedIssuerDidAndScopeAndScopeTypeEquals(did, scope, scopeType);
+    }
+  }
+
+  /**
+   * Typed half of {@link #findByTrustedIssuerDidAndScopeAndScopeType}, use that instead.
+   *
+   * @param did the DID of the issuer
+   * @param scope what granted the credentials
+   * @param scopeType the kind of scope
+   * @return the matching credentials
+   */
+  List<Credential> findByTrustedIssuerDidAndScopeAndScopeTypeEquals(
+      String did, String scope, String scopeType);
+
+  /**
+   * Untyped half of {@link #findByTrustedIssuerDidAndScopeAndScopeType}, use that instead.
+   *
+   * @param did the DID of the issuer
+   * @param scope what granted the credentials
+   * @return the matching credentials
+   */
+  List<Credential> findByTrustedIssuerDidAndScopeAndScopeTypeIsNull(String did, String scope);
+
+  /**
+   * Typed half of {@link #deleteByTrustedIssuerDidAndScopeAndScopeType}, use that instead.
+   *
+   * @param did the DID of the issuer
+   * @param scope what granted the credentials
+   * @param scopeType the kind of scope
+   */
+  void deleteByTrustedIssuerDidAndScopeAndScopeTypeEquals(
+      String did, String scope, String scopeType);
+
+  /**
+   * Untyped half of {@link #deleteByTrustedIssuerDidAndScopeAndScopeType}, use that instead.
    *
    * @param did the DID of the issuer
    * @param scope what granted the credentials
    */
-  void deleteByTrustedIssuerDidAndScope(String did, String scope);
+  void deleteByTrustedIssuerDidAndScopeAndScopeTypeIsNull(String did, String scope);
 }

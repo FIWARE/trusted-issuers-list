@@ -72,9 +72,16 @@ public class Credential {
    * It is set through the {@code /issuer/{did}/credential} endpoints instead.
    *
    * <p>{@code null} marks a credential that is managed directly through the issuer endpoints. Such
-   * a credential is never touched by a scoped operation.
+   * a credential is never touched by a scoped operation. A grant is identified by the pair (scope,
+   * scopeType).
    */
   @Nullable private String scope;
+
+  /**
+   * The kind of thing {@link #scope} identifies, e.g. a data-space membership. {@code null} means
+   * untyped, as are the ProductOrder grants written before it existed. Internal, like scope.
+   */
+  @Nullable private String scopeType;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "trusted_issuer_id")

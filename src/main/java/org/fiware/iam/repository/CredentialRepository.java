@@ -59,6 +59,15 @@ public interface CredentialRepository extends PageableRepository<Credential, Int
   }
 
   /**
+   * Find every credential an issuer was granted by any scope, so that its grants can be listed.
+   * Credentials managed directly through the issuer endpoints carry no scope and are left out.
+   *
+   * @param did the DID of the issuer
+   * @return the scoped credentials, empty if the issuer holds none
+   */
+  List<Credential> findByTrustedIssuerDidAndScopeIsNotNull(String did);
+
+  /**
    * Typed half of {@link #findByTrustedIssuerDidAndScopeAndScopeType}, use that instead.
    *
    * @param did the DID of the issuer

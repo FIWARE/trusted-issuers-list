@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.fiware.iam.TILMapper;
@@ -62,6 +63,19 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   private static final String CREATE_ISSUER_PATH = "/issuer?scope=%s&scopeType=%s";
   private static final String CREATE_ISSUER_TYPE_ONLY_PATH =
       "/issuer?scopeType=" + MEMBERSHIP_SCOPE_TYPE;
+  private static final String ISSUER_SCOPES_PATH = "/issuer/%s/scopes";
+  private static final String MEMBER_DID = "did:web:a-member.org";
+  private static final String OTHER_ORDER_DID = "did:web:other-order.org";
+  private static final String UNSCOPED_DID = "did:web:b-unscoped.org";
+  private static final String UNKNOWN_SCOPE = "urn:ngsi-ld:product-order:unknown";
+  private static final String GRANTED_DID_TEMPLATE = "did:web:granted-%d.org";
+  private static final String UNSCOPED_DID_TEMPLATE = "did:web:direct-%d.org";
+  private static final int GRANTED_ISSUERS = 5;
+  private static final int GRANT_PAGE_SIZE = 2;
+  private static final String SCOPE_TYPE_PROPERTY = "scopeType";
+  private static final int ORDER_SCOPE_CREDENTIALS = 2;
+  private static final int MEMBERSHIP_CREDENTIALS = 1;
+  private static final int OTHER_ORDER_CREDENTIALS = 1;
   // a list rather than the enum's values, because the untyped grant (null) is one of them
   private static final List<ScopeTypeVO> SCOPE_TYPES =
       Arrays.asList(null, ScopeTypeVO.DATASPACE_MEMBERSHIP);
@@ -78,6 +92,8 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   private TrustedIssuerVO issuerToCreate;
   private UpdatePair issuerUpdate;
   private String didToUpdate;
+  private Consumer<IssuerApiTestClient> grantsToSetUp;
+  private List<IssuerScopeVO> expectedScopes;
 
   @BeforeEach
   public void cleanUp() {
@@ -236,7 +252,8 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     }
 
     // default pagination: page 0, size 10
-    HttpResponse<TrustedIssuersListResponseVO> response = testClient.getIssuers(null, null);
+    HttpResponse<TrustedIssuersListResponseVO> response =
+        testClient.getIssuers(null, null, null, null);
     assertEquals(HttpStatus.OK, response.getStatus(), "The issuers should have been returned.");
     TrustedIssuersListResponseVO body = response.body();
     assertEquals(20, body.getTotal(), "Total count should include all issuers.");
@@ -246,7 +263,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     assertEquals("did:elsi:10", body.getItems().get(0), "Items should be sorted by DID.");
 
     // custom page size
-    response = testClient.getIssuers(20, null);
+    response = testClient.getIssuers(20, null, null, null);
     assertEquals(HttpStatus.OK, response.getStatus(), "The issuers should have been returned.");
     body = response.body();
     assertEquals(20, body.getTotal(), "Total count should include all issuers.");
@@ -254,7 +271,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     assertEquals(20, body.getItems().size(), "All issuers should be returned in one page.");
 
     // second page
-    response = testClient.getIssuers(10, 1);
+    response = testClient.getIssuers(10, 1, null, null);
     assertEquals(HttpStatus.OK, response.getStatus(), "The issuers should have been returned.");
     body = response.body();
     assertEquals(20, body.getTotal(), "Total count should include all issuers.");
@@ -266,7 +283,8 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
 
   @Test
   public void getIssuersEmpty200() throws Exception {
-    HttpResponse<TrustedIssuersListResponseVO> response = testClient.getIssuers(null, null);
+    HttpResponse<TrustedIssuersListResponseVO> response =
+        testClient.getIssuers(null, null, null, null);
     assertEquals(HttpStatus.OK, response.getStatus(), "An empty list should still return 200.");
     TrustedIssuersListResponseVO body = response.body();
     assertEquals(0, body.getTotal(), "Total should be 0 for an empty list.");
@@ -276,7 +294,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Test
   public void getIssuersInvalidPageSize400() throws Exception {
     try {
-      testClient.getIssuers(0, null);
+      testClient.getIssuers(0, null, null, null);
     } catch (HttpClientResponseException e) {
       assertEquals(
           HttpStatus.BAD_REQUEST,
@@ -285,6 +303,133 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
       return;
     }
     fail("A page size of 0 should be rejected.");
+  }
+
+  @Test
+  @Override
+  public void getIssuers400() throws Exception {
+    try {
+      testClient.getIssuers(null, null, null, ScopeTypeVO.DATASPACE_MEMBERSHIP);
+    } catch (HttpClientResponseException e) {
+      assertEquals(
+          HttpStatus.BAD_REQUEST,
+          e.getStatus(),
+          "A scope type without a scope should be rejected.");
+      return;
+    }
+    fail("A scope type without a scope should be rejected.");
+  }
+
+  @ParameterizedTest
+  @MethodSource("issuersByGrant")
+  public void getIssuers200_filteredByGrant(
+      String scope, ScopeTypeVO scopeType, List<String> expectedDids) {
+    grantSeveralPairsAndAnUnscopedCredential(testClient);
+    grantToOtherIssuers();
+
+    TrustedIssuersListResponseVO body = testClient.getIssuers(null, null, scope, scopeType).body();
+
+    assertEquals(expectedDids, body.getItems(), "Exactly the issuers holding the pair, once each.");
+    assertEquals(
+        expectedDids.size(), body.getTotal(), "The total must count issuers, not credentials.");
+    assertEquals(expectedDids.size(), body.getPageSize(), "The page holds every match.");
+  }
+
+  private static Stream<Arguments> issuersByGrant() {
+    return Stream.of(
+        // ISSUER_DID holds two credentials under each of the first two pairs
+        Arguments.of(ORDER_SCOPE, null, List.of(ISSUER_DID)),
+        Arguments.of(
+            ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP, List.of(MEMBER_DID, ISSUER_DID)),
+        Arguments.of(OTHER_ORDER_SCOPE, null, List.of(ISSUER_DID, OTHER_ORDER_DID)),
+        Arguments.of(OTHER_ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP, List.of()),
+        Arguments.of(UNKNOWN_SCOPE, null, List.of()),
+        Arguments.of(UNKNOWN_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP, List.of()));
+  }
+
+  @ParameterizedTest
+  @MethodSource("scopeTypes")
+  public void getIssuers200_filteredByGrantIsPaged(ScopeTypeVO scopeType) {
+    List<String> dids = new ArrayList<>();
+    for (int i = 0; i < GRANTED_ISSUERS; i++) {
+      String did = String.format(GRANTED_DID_TEMPLATE, i);
+      testClient.replaceCredentialsByScope(
+          did,
+          ORDER_SCOPE,
+          List.of(credential(OPERATOR_CREDENTIAL), credential(READER_CREDENTIAL)),
+          scopeType);
+      testClient.createTrustedIssuer(
+          new TrustedIssuerVO()
+              .did(String.format(UNSCOPED_DID_TEMPLATE, i))
+              .credentials(List.of(credential(OPERATOR_CREDENTIAL))),
+          null,
+          null);
+      dids.add(did);
+    }
+
+    TrustedIssuersListResponseVO body =
+        testClient.getIssuers(GRANT_PAGE_SIZE, 1, ORDER_SCOPE, scopeType).body();
+
+    assertEquals(GRANTED_ISSUERS, body.getTotal(), "The total must count the matching issuers.");
+    assertEquals(1, body.getPage(), "The requested page should be returned.");
+    assertEquals(GRANT_PAGE_SIZE, body.getPageSize(), "The page should be full.");
+    assertEquals(
+        dids.subList(GRANT_PAGE_SIZE, 2 * GRANT_PAGE_SIZE),
+        body.getItems(),
+        "The second page should continue in DID order.");
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidIssuerFilters")
+  public void getIssuers400_invalidFilter(String path) {
+    grantEveryPairAndAnUnscopedCredential();
+
+    HttpClientResponseException e =
+        assertThrows(
+            HttpClientResponseException.class,
+            () -> httpClient.toBlocking().exchange(HttpRequest.GET(path)));
+
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        e.getStatus(),
+        "An invalid filter must be rejected rather than list every issuer.");
+  }
+
+  private static Stream<Arguments> invalidIssuerFilters() {
+    return Stream.of(
+        Arguments.of("/issuer?scope="),
+        Arguments.of("/issuer?scope=%20"),
+        Arguments.of("/issuer?scope=&scopeType=" + MEMBERSHIP_SCOPE_TYPE),
+        Arguments.of("/issuer?scopeType=" + MEMBERSHIP_SCOPE_TYPE),
+        Arguments.of("/issuer?scope=" + ORDER_SCOPE + "&scopeType="),
+        Arguments.of("/issuer?scope=" + ORDER_SCOPE + "&scopeType=bogus"),
+        Arguments.of("/issuer?scope=" + ORDER_SCOPE + "&scopeType=DATASPACE_MEMBERSHIP"));
+  }
+
+  /**
+   * Grants to issuers besides {@link #ISSUER_DID}: a second membership with two credentials, a
+   * second holder of {@link #OTHER_ORDER_SCOPE}, and an issuer with only unscoped credentials.
+   */
+  private void grantToOtherIssuers() {
+    testClient.replaceCredentialsByScope(
+        MEMBER_DID,
+        ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL), credential(READER_CREDENTIAL)),
+        ScopeTypeVO.DATASPACE_MEMBERSHIP);
+    testClient.replaceCredentialsByScope(
+        OTHER_ORDER_DID, OTHER_ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
+    testClient.createTrustedIssuer(
+        new TrustedIssuerVO()
+            .did(UNSCOPED_DID)
+            .credentials(List.of(credential(OPERATOR_CREDENTIAL), credential(USER_CREDENTIAL))),
+        null,
+        null);
+    // ISSUER_DID holds one membership credential from the shared fixture, make it two
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID,
+        ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL), credential(READER_CREDENTIAL)),
+        ScopeTypeVO.DATASPACE_MEMBERSHIP);
   }
 
   @Override
@@ -863,6 +1008,141 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     List<Credential> untyped = scopedCredentials(ISSUER_DID, ORDER_SCOPE);
     assertEquals(1, untyped.size(), "The untyped grant should be found by a null type.");
     assertNull(untyped.get(0).getScopeType(), "A grant without a type should store no type.");
+  }
+
+  // --- listing the grants of an issuer -----------------------------------------
+
+  @Override
+  public void getIssuerScopes200() throws Exception {
+    grantsToSetUp.accept(testClient);
+
+    HttpResponse<List<IssuerScopeVO>> response = testClient.getIssuerScopes(ISSUER_DID);
+
+    assertEquals(HttpStatus.OK, response.getStatus(), "The grants should be listed.");
+    assertEquals(
+        expectedScopes,
+        response.body(),
+        "Exactly the distinct grants should be listed, in order, with their credential count.");
+  }
+
+  @ParameterizedTest
+  @MethodSource("issuerScopes")
+  public void getIssuerScopes200(Consumer<IssuerApiTestClient> grants, List<IssuerScopeVO> expected)
+      throws Exception {
+    grantsToSetUp = grants;
+    expectedScopes = expected;
+    getIssuerScopes200();
+  }
+
+  private static Stream<Arguments> issuerScopes() {
+    IssuerScopeVO untypedOrder = issuerScope(ORDER_SCOPE, null, ORDER_SCOPE_CREDENTIALS);
+    IssuerScopeVO membership =
+        issuerScope(ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP, MEMBERSHIP_CREDENTIALS);
+    IssuerScopeVO otherOrder = issuerScope(OTHER_ORDER_SCOPE, null, OTHER_ORDER_CREDENTIALS);
+    return Stream.of(
+        Arguments.of(
+            (Consumer<IssuerApiTestClient>)
+                TrustedIssuersListControllerTest::grantSeveralPairsAndAnUnscopedCredential,
+            List.of(untypedOrder, membership, otherOrder)),
+        Arguments.of(
+            (Consumer<IssuerApiTestClient>)
+                client ->
+                    client.createTrustedIssuer(
+                        new TrustedIssuerVO()
+                            .did(ISSUER_DID)
+                            .credentials(List.of(credential(USER_CREDENTIAL))),
+                        null,
+                        null),
+            List.of()),
+        Arguments.of(
+            (Consumer<IssuerApiTestClient>)
+                client -> {
+                  grantSeveralPairsAndAnUnscopedCredential(client);
+                  client.deleteCredentialsByScope(
+                      ISSUER_DID, ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP);
+                },
+            List.of(untypedOrder, otherOrder)),
+        Arguments.of(
+            (Consumer<IssuerApiTestClient>)
+                client -> {
+                  grantSeveralPairsAndAnUnscopedCredential(client);
+                  client.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null);
+                },
+            List.of(membership, otherOrder)),
+        Arguments.of(
+            (Consumer<IssuerApiTestClient>)
+                client ->
+                    client.createTrustedIssuer(
+                        new TrustedIssuerVO()
+                            .did(ISSUER_DID)
+                            .credentials(
+                                List.of(
+                                    credential(OPERATOR_CREDENTIAL),
+                                    credential(READER_CREDENTIAL))),
+                        ORDER_SCOPE,
+                        ScopeTypeVO.DATASPACE_MEMBERSHIP),
+            List.of(
+                issuerScope(
+                    ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP, ORDER_SCOPE_CREDENTIALS))));
+  }
+
+  @Test
+  @Override
+  public void getIssuerScopes404() throws Exception {
+    HttpResponse<List<IssuerScopeVO>> response =
+        testClient.getIssuerScopes("did:web:nonexistent.org");
+
+    assertEquals(HttpStatus.NOT_FOUND, response.getStatus(), "An unknown issuer has no grants.");
+  }
+
+  @Test
+  public void getIssuerScopes200_untypedGrantCarriesNoType() {
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
+
+    String body = httpClient.toBlocking().retrieve(String.format(ISSUER_SCOPES_PATH, ISSUER_DID));
+
+    assertFalse(
+        body.contains(SCOPE_TYPE_PROPERTY),
+        "An untyped grant should omit the type rather than send null: " + body);
+  }
+
+  /**
+   * One unscoped credential, two credentials under the untyped {@link #ORDER_SCOPE}, one under its
+   * membership type, and one with two claims under {@link #OTHER_ORDER_SCOPE}, granted out of
+   * order. The counts differ per pair and from the claim count.
+   */
+  private static void grantSeveralPairsAndAnUnscopedCredential(IssuerApiTestClient client) {
+    client.createTrustedIssuer(
+        new TrustedIssuerVO().did(ISSUER_DID).credentials(List.of(credential(USER_CREDENTIAL))),
+        null,
+        null);
+    client.replaceCredentialsByScope(
+        ISSUER_DID,
+        OTHER_ORDER_SCOPE,
+        List.of(
+            new CredentialsVO()
+                .credentialsType(OPERATOR_CREDENTIAL)
+                .claims(
+                    List.of(
+                        new ClaimVO().name("roles").allowedValues(List.of("OPERATOR")),
+                        new ClaimVO().name("level").allowedValues(List.of("GOLD"))))),
+        null);
+    client.replaceCredentialsByScope(
+        ISSUER_DID,
+        ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL)),
+        ScopeTypeVO.DATASPACE_MEMBERSHIP);
+    client.replaceCredentialsByScope(
+        ISSUER_DID,
+        ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL), credential(READER_CREDENTIAL)),
+        null);
+  }
+
+  private static IssuerScopeVO issuerScope(
+      String scope, ScopeTypeVO scopeType, int credentialCount) {
+    return new IssuerScopeVO().scope(scope).scopeType(scopeType).credentialCount(credentialCount);
   }
 
   private void grantEveryPairAndAnUnscopedCredential() {

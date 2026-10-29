@@ -21,10 +21,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.HttpStatus;
+import io.micronaut.http.client.HttpClient;
+import io.micronaut.http.client.annotation.Client;
 import io.micronaut.http.client.exceptions.HttpClientResponseException;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import jakarta.inject.Inject;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -62,6 +66,11 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
   private final TirApiTestClient testClient;
   private final IssuerApiTestClient insertionClient;
   private final TrustedIssuerRepository repository;
+  private final ObjectMapper objectMapper;
+
+  @Inject
+  @Client("/")
+  HttpClient httpClient;
 
   private TrustedIssuerVO storedIssuer;
   private String didToRequest;
@@ -323,5 +332,22 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
         1,
         issuer.getAttributes().size(),
         "An untyped and a typed grant of one credential are one attribute in the registry.");
+  }
+
+  private static Stream<Arguments> registryPaths() {
+    return Stream.of(Arguments.of("/v4/issuers/"), Arguments.of("/v4/issuers/%s"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("registryPaths")
+  public void registryV4_neverRevealsGrantData(String pathTemplate) throws Exception {
+    ScopeLeakFixture.grantUnderEveryKindOfScope(insertionClient, httpClient, DID_HAPPYPETS);
+    assertEquals(
+        ScopeLeakFixture.GRANTED_CREDENTIALS,
+        testClient.getIssuerV4(DID_HAPPYPETS).body().getAttributes().size(),
+        "Every granted credential has to be in the registry, or its body goes unchecked.");
+
+    String path = String.format(pathTemplate, DID_HAPPYPETS);
+    ScopeLeakFixture.assertNoGrantData(objectMapper, path, httpClient.toBlocking().retrieve(path));
   }
 }

@@ -51,6 +51,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   private static final String ISSUER_DID = "did:web:consumer.org";
   private static final String ORDER_SCOPE = "urn:ngsi-ld:product-order:first";
   private static final String OTHER_ORDER_SCOPE = "urn:ngsi-ld:product-order:second";
+  private static final String MEMBERSHIP_SCOPE_TYPE = "dataspace-membership";
   private static final String OPERATOR_CREDENTIAL = "OperatorCredential";
   private static final String USER_CREDENTIAL = "UserCredential";
   private static final String READER_CREDENTIAL = "ReaderCredential";
@@ -439,6 +440,26 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
         Arguments.of("%20"),
         Arguments.of("bogus"),
         Arguments.of("DATASPACE_MEMBERSHIP"));
+  }
+
+  @Test
+  public void replaceCredentialsByScope200_typedGrantIsStoredApart() {
+    testClient.replaceCredentialsByScope(
+        ISSUER_DID,
+        ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL)),
+        ScopeTypeVO.DATASPACE_MEMBERSHIP);
+
+    assertEquals(
+        1,
+        credentialRepository
+            .findByTrustedIssuerDidAndScopeAndScopeType(
+                ISSUER_DID, ORDER_SCOPE, MEMBERSHIP_SCOPE_TYPE)
+            .size(),
+        "The typed grant should be stored under the wire value of its type.");
+    assertTrue(
+        scopedCredentials(ISSUER_DID, ORDER_SCOPE).isEmpty(),
+        "A typed grant must not show up as an untyped one.");
   }
 
   @Test

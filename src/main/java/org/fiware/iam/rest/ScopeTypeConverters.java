@@ -23,7 +23,9 @@ import org.fiware.iam.til.model.ScopeTypeVO;
 
 /**
  * Converts a scope type to and from its wire value. An unknown value is rejected with a 400:
- * micronaut would otherwise bind it as {@code null} and address the untyped grants instead.
+ * micronaut would otherwise bind it as {@code null} and address the untyped grants instead. Exists
+ * for the {@code scopeType} query parameter: the registration is global, but request bodies go
+ * through Jackson ({@code ScopeTypeVO.toEnum}), which rejects unknown values on its own path.
  */
 @Singleton
 public class ScopeTypeConverters implements TypeConverterRegistrar {

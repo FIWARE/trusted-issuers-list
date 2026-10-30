@@ -959,7 +959,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
 
     repository.deleteAll();
     insertionClient.replaceCredentialsByScope(
-        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials, null);
+        DID_HAPPYPETS, credentials, "urn:ngsi-ld:product-order:first", null);
     AttributesResponseVO scoped =
         testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
     AttributeDetailsVO scopedDetails =
@@ -980,9 +980,9 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
     java.util.List<org.fiware.iam.til.model.CredentialsVO> credentials =
         java.util.List.of(CredentialsVOTestExample.build().validFor(null));
     insertionClient.replaceCredentialsByScope(
-        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials, null);
+        DID_HAPPYPETS, credentials, "urn:ngsi-ld:product-order:first", null);
     insertionClient.replaceCredentialsByScope(
-        DID_HAPPYPETS, "urn:ngsi-ld:product-order:second", credentials, null);
+        DID_HAPPYPETS, credentials, "urn:ngsi-ld:product-order:second", null);
 
     AttributesResponseVO attributes =
         testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();
@@ -997,7 +997,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   @Test
   public void getIssuerAttributesV5_scopeTypeChangesNeitherIdNorBody() throws Exception {
     List<CredentialsVO> credentials = List.of(CredentialsVOTestExample.build().validFor(null));
-    insertionClient.replaceCredentialsByScope(DID_HAPPYPETS, ORDER_SCOPE, credentials, null);
+    insertionClient.replaceCredentialsByScope(DID_HAPPYPETS, credentials, ORDER_SCOPE, null);
     String untypedId =
         testClient
             .getIssuerAttributesV5(DID_HAPPYPETS, null, null)
@@ -1009,7 +1009,7 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
 
     repository.deleteAll();
     insertionClient.replaceCredentialsByScope(
-        DID_HAPPYPETS, ORDER_SCOPE, credentials, ScopeTypeVO.DATASPACE_MEMBERSHIP);
+        DID_HAPPYPETS, credentials, ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP);
     String typedId =
         testClient
             .getIssuerAttributesV5(DID_HAPPYPETS, null, null)
@@ -1038,9 +1038,9 @@ public class TrustedIssuerRegistryV5ControllerTest implements Tirv5ApiTestSpec {
   @Test
   public void getIssuerAttributesV5_deduplicatesWhatTwoTypesOfOneScopeGranted() throws Exception {
     List<CredentialsVO> credentials = List.of(CredentialsVOTestExample.build().validFor(null));
-    insertionClient.replaceCredentialsByScope(DID_HAPPYPETS, ORDER_SCOPE, credentials, null);
+    insertionClient.replaceCredentialsByScope(DID_HAPPYPETS, credentials, ORDER_SCOPE, null);
     insertionClient.replaceCredentialsByScope(
-        DID_HAPPYPETS, ORDER_SCOPE, credentials, ScopeTypeVO.DATASPACE_MEMBERSHIP);
+        DID_HAPPYPETS, credentials, ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP);
 
     AttributesResponseVO attributes =
         testClient.getIssuerAttributesV5(DID_HAPPYPETS, null, null).body();

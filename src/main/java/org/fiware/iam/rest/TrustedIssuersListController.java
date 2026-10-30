@@ -110,7 +110,7 @@ public class TrustedIssuersListController implements IssuerApi {
       throw new IllegalArgumentException(SCOPE_TYPE_WITHOUT_SCOPE);
     }
     if (scope != null) {
-      requireScope(scope);
+      requireScope(scope, NO_SCOPE_PROVIDED);
     }
 
     Sort didSort = Sort.unsorted().order(SORT_FIELD);
@@ -152,7 +152,7 @@ public class TrustedIssuersListController implements IssuerApi {
       throw new IllegalArgumentException(SCOPE_TYPE_WITHOUT_SCOPE);
     }
     if (scope != null) {
-      requireScope(scope);
+      requireScope(scope, NO_SCOPE_PROVIDED);
     }
     if (trustedIssuerRepository.existsById(trustedIssuerVO.getDid())) {
       throw new ConflictException("Issuer already exists.", trustedIssuerVO.getDid());
@@ -209,8 +209,8 @@ public class TrustedIssuersListController implements IssuerApi {
    * branch - and the race that comes with it.
    *
    * @param did the DID of the issuer
-   * @param scope what grants the credentials, e.g. a ProductOrder id
    * @param credentialsVO the credentials this scope grants, possibly empty
+   * @param scope what grants the credentials, e.g. a ProductOrder id
    * @param scopeType the kind of thing the scope identifies, {@code null} addresses untyped grants
    * @return the issuer including all of its credentials
    */
@@ -218,11 +218,11 @@ public class TrustedIssuersListController implements IssuerApi {
   @Override
   public HttpResponse<TrustedIssuerVO> replaceCredentialsByScope(
       String did,
-      String scope,
       List<CredentialsVO> credentialsVO,
+      @Nullable String scope,
       @Nullable ScopeTypeVO scopeType) {
 
-    requireScope(scope);
+    requireScope(scope, NO_SCOPE_PROVIDED);
     String type = toColumn(scopeType);
     String grant = describe(scope, type);
     TrustedIssuer trustedIssuer =
@@ -283,9 +283,7 @@ public class TrustedIssuersListController implements IssuerApi {
     if (Boolean.TRUE.equals(unscoped)) {
       return deleteUnscopedCredentials(did, scope, scopeType);
     }
-    if (scope == null || scope.isBlank()) {
-      throw new IllegalArgumentException(NO_SCOPE_OR_UNSCOPED);
-    }
+    requireScope(scope, NO_SCOPE_OR_UNSCOPED);
     String type = toColumn(scopeType);
     String grant = describe(scope, type);
     if (!trustedIssuerRepository.existsById(did)) {
@@ -364,10 +362,11 @@ public class TrustedIssuersListController implements IssuerApi {
    * problem the scope exists to solve.
    *
    * @param scope the scope to check
+   * @param message the reason given to the client when the scope is missing
    */
-  private static void requireScope(String scope) {
+  private static void requireScope(@Nullable String scope, String message) {
     if (scope == null || scope.isBlank()) {
-      throw new IllegalArgumentException(NO_SCOPE_PROVIDED);
+      throw new IllegalArgumentException(message);
     }
   }
 

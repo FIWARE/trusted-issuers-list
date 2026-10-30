@@ -189,7 +189,7 @@ paths:
         - issuer
       parameters:
         - $ref: '#/components/parameters/Id'
-        - $ref: '#/components/parameters/RevokedScope'
+        - $ref: '#/components/parameters/Scope'
         - $ref: '#/components/parameters/ScopeType'
         - $ref: '#/components/parameters/Unscoped'
       operationId: deleteCredentialsByScope
@@ -271,21 +271,11 @@ components:
     Scope:
       name: scope
       in: query
-      required: true
-      description: >
-        Identifies what granted the credentials, so that they can be revoked without affecting
-        credentials granted by anything else. Not part of the credential itself and never exposed
-        through the trusted-issuers-registry.
-      schema:
-        type: string
-        example: urn:ngsi-ld:product-order:5f7a1e60
-    RevokedScope:
-      name: scope
-      in: query
       required: false
       description: >
-        Identifies what granted the credentials to delete. Required unless unscoped=true, and must
-        not be combined with it. Not part of the credential itself and never exposed through the
+        Identifies what granted the credentials, so that they can be revoked without affecting
+        credentials granted by anything else. Required, except for a delete with unscoped=true,
+        which must not carry one. Not part of the credential itself and never exposed through the
         trusted-issuers-registry.
       schema:
         type: string

@@ -63,9 +63,9 @@ final class ScopeLeakFixture {
     insertionClient.createTrustedIssuer(
         new TrustedIssuerVO().did(did).credentials(List.of(credential(UNSCOPED_TYPE))), null, null);
     insertionClient.replaceCredentialsByScope(
-        did, List.of(credential(UNTYPED_GRANT_TYPE)), UNTYPED_SCOPE, null);
+        did, UNTYPED_SCOPE, List.of(credential(UNTYPED_GRANT_TYPE)), null);
     insertionClient.replaceCredentialsByScope(
-        did, List.of(credential(TYPED_GRANT_TYPE)), TYPED_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP);
+        did, TYPED_SCOPE, List.of(credential(TYPED_GRANT_TYPE)), ScopeTypeVO.DATASPACE_MEMBERSHIP);
 
     String grants = httpClient.toBlocking().retrieve(String.format(ISSUER_SCOPES_PATH, did));
     GRANT_DATA.forEach(

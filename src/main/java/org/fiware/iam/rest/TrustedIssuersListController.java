@@ -209,8 +209,8 @@ public class TrustedIssuersListController implements IssuerApi {
    * branch - and the race that comes with it.
    *
    * @param did the DID of the issuer
-   * @param credentialsVO the credentials this scope grants, possibly empty
    * @param scope what grants the credentials, e.g. a ProductOrder id
+   * @param credentialsVO the credentials this scope grants, possibly empty
    * @param scopeType the kind of thing the scope identifies, {@code null} addresses untyped grants
    * @return the issuer including all of its credentials
    */
@@ -218,8 +218,8 @@ public class TrustedIssuersListController implements IssuerApi {
   @Override
   public HttpResponse<TrustedIssuerVO> replaceCredentialsByScope(
       String did,
+      String scope,
       List<CredentialsVO> credentialsVO,
-      @Nullable String scope,
       @Nullable ScopeTypeVO scopeType) {
 
     requireScope(scope, NO_SCOPE_PROVIDED);

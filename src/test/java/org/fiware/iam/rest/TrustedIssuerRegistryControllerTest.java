@@ -265,7 +265,7 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
 
     repository.deleteAll();
     insertionClient.replaceCredentialsByScope(
-        DID_HAPPYPETS, credentials, "urn:ngsi-ld:product-order:first", null);
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials, null);
     IssuerVO scoped = testClient.getIssuerV4(DID_HAPPYPETS).body();
 
     assertEquals(
@@ -283,9 +283,9 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
     List<org.fiware.iam.til.model.CredentialsVO> credentials =
         List.of(CredentialsVOTestExample.build().validFor(null));
     insertionClient.replaceCredentialsByScope(
-        DID_HAPPYPETS, credentials, "urn:ngsi-ld:product-order:first", null);
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:first", credentials, null);
     insertionClient.replaceCredentialsByScope(
-        DID_HAPPYPETS, credentials, "urn:ngsi-ld:product-order:second", null);
+        DID_HAPPYPETS, "urn:ngsi-ld:product-order:second", credentials, null);
 
     IssuerVO issuer = testClient.getIssuerV4(DID_HAPPYPETS).body();
 
@@ -299,12 +299,12 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
   public void getIssuerV4200_scopeTypeChangesNeitherBodyNorHash() throws Exception {
     List<org.fiware.iam.til.model.CredentialsVO> credentials =
         List.of(CredentialsVOTestExample.build().validFor(null));
-    insertionClient.replaceCredentialsByScope(DID_HAPPYPETS, credentials, ORDER_SCOPE, null);
+    insertionClient.replaceCredentialsByScope(DID_HAPPYPETS, ORDER_SCOPE, credentials, null);
     IssuerAttributeVO untyped = testClient.getIssuerV4(DID_HAPPYPETS).body().getAttributes().get(0);
 
     repository.deleteAll();
     insertionClient.replaceCredentialsByScope(
-        DID_HAPPYPETS, credentials, ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP);
+        DID_HAPPYPETS, ORDER_SCOPE, credentials, ScopeTypeVO.DATASPACE_MEMBERSHIP);
     IssuerAttributeVO typed = testClient.getIssuerV4(DID_HAPPYPETS).body().getAttributes().get(0);
 
     assertEquals(
@@ -322,9 +322,9 @@ public class TrustedIssuerRegistryControllerTest implements TirApiTestSpec {
   public void getIssuerV4200_deduplicatesWhatTwoTypesOfOneScopeGranted() throws Exception {
     List<org.fiware.iam.til.model.CredentialsVO> credentials =
         List.of(CredentialsVOTestExample.build().validFor(null));
-    insertionClient.replaceCredentialsByScope(DID_HAPPYPETS, credentials, ORDER_SCOPE, null);
+    insertionClient.replaceCredentialsByScope(DID_HAPPYPETS, ORDER_SCOPE, credentials, null);
     insertionClient.replaceCredentialsByScope(
-        DID_HAPPYPETS, credentials, ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP);
+        DID_HAPPYPETS, ORDER_SCOPE, credentials, ScopeTypeVO.DATASPACE_MEMBERSHIP);
 
     IssuerVO issuer = testClient.getIssuerV4(DID_HAPPYPETS).body();
 

@@ -358,8 +358,8 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
       String did = String.format(GRANTED_DID_TEMPLATE, i);
       testClient.replaceCredentialsByScope(
           did,
-          List.of(credential(OPERATOR_CREDENTIAL), credential(READER_CREDENTIAL)),
           ORDER_SCOPE,
+          List.of(credential(OPERATOR_CREDENTIAL), credential(READER_CREDENTIAL)),
           scopeType);
       testClient.createTrustedIssuer(
           new TrustedIssuerVO()
@@ -416,11 +416,11 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   private void grantToOtherIssuers() {
     testClient.replaceCredentialsByScope(
         MEMBER_DID,
-        List.of(credential(OPERATOR_CREDENTIAL), credential(READER_CREDENTIAL)),
         ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL), credential(READER_CREDENTIAL)),
         ScopeTypeVO.DATASPACE_MEMBERSHIP);
     testClient.replaceCredentialsByScope(
-        OTHER_ORDER_DID, List.of(credential(OPERATOR_CREDENTIAL)), OTHER_ORDER_SCOPE, null);
+        OTHER_ORDER_DID, OTHER_ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
     testClient.createTrustedIssuer(
         new TrustedIssuerVO()
             .did(UNSCOPED_DID)
@@ -430,8 +430,8 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     // ISSUER_DID holds one membership credential from the shared fixture, make it two
     testClient.replaceCredentialsByScope(
         ISSUER_DID,
-        List.of(credential(OPERATOR_CREDENTIAL), credential(READER_CREDENTIAL)),
         ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL), credential(READER_CREDENTIAL)),
         ScopeTypeVO.DATASPACE_MEMBERSHIP);
   }
 
@@ -540,7 +540,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void replaceCredentialsByScope200() throws Exception {
     HttpResponse<TrustedIssuerVO> response =
         testClient.replaceCredentialsByScope(
-            ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, null);
+            ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     assertEquals(HttpStatus.OK, response.getStatus(), "The credentials should have been granted.");
     assertEquals(
@@ -558,7 +558,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void replaceCredentialsByScope400() throws Exception {
     try {
       testClient.replaceCredentialsByScope(
-          ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), "", null);
+          ISSUER_DID, "", List.of(credential(OPERATOR_CREDENTIAL)), null);
     } catch (HttpClientResponseException e) {
       assertEquals(
           HttpStatus.BAD_REQUEST, e.getStatus(), "A grant without a scope should be rejected.");
@@ -575,7 +575,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
             HttpClientResponseException.class,
             () ->
                 testClient.replaceCredentialsByScope(
-                    ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), scope, null));
+                    ISSUER_DID, scope, List.of(credential(OPERATOR_CREDENTIAL)), null));
 
     assertEquals(
         HttpStatus.BAD_REQUEST, e.getStatus(), "A grant without a scope should be rejected.");
@@ -590,7 +590,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @MethodSource("unknownScopeTypes")
   public void deleteCredentialsByScope400_unknownScopeType(String scopeType) {
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, null);
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
     HttpRequest<?> revocation =
         HttpRequest.DELETE(
             String.format(SCOPED_CREDENTIALS_PATH, ISSUER_DID, ORDER_SCOPE, scopeType));
@@ -621,8 +621,8 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void replaceCredentialsByScope200_typedGrantIsStoredApart() {
     testClient.replaceCredentialsByScope(
         ISSUER_DID,
-        List.of(credential(OPERATOR_CREDENTIAL)),
         ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL)),
         ScopeTypeVO.DATASPACE_MEMBERSHIP);
 
     assertEquals(
@@ -641,7 +641,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Override
   public void deleteCredentialsByScope204() throws Exception {
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, null);
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     HttpResponse<?> response =
         testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null, null);
@@ -729,7 +729,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
             (Consumer<IssuerApiTestClient>)
                 client ->
                     client.replaceCredentialsByScope(
-                        ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, null)),
+                        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null)),
         Arguments.of(
             (Consumer<IssuerApiTestClient>)
                 client ->
@@ -787,10 +787,10 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Test
   public void replaceCredentialsByScope_isIdempotent() throws Exception {
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, null);
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
     HttpResponse<TrustedIssuerVO> response =
         testClient.replaceCredentialsByScope(
-            ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, null);
+            ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     assertEquals(
         1,
@@ -801,13 +801,13 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Test
   public void replaceCredentialsByScope_replacesOnlyItsOwnScope() throws Exception {
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, null);
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, List.of(credential(USER_CREDENTIAL)), OTHER_ORDER_SCOPE, null);
+        ISSUER_DID, OTHER_ORDER_SCOPE, List.of(credential(USER_CREDENTIAL)), null);
 
     HttpResponse<TrustedIssuerVO> response =
         testClient.replaceCredentialsByScope(
-            ISSUER_DID, List.of(credential(READER_CREDENTIAL)), ORDER_SCOPE, null);
+            ISSUER_DID, ORDER_SCOPE, List.of(credential(READER_CREDENTIAL)), null);
 
     List<String> types =
         response.body().getCredentials().stream()
@@ -824,9 +824,9 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void deleteCredentialsByScope_keepsWhatAnotherScopeGranted() throws Exception {
     // both orders grant the very same credential - the case that used to revoke both at once
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, null);
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), OTHER_ORDER_SCOPE, null);
+        ISSUER_DID, OTHER_ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null, null);
 
@@ -849,7 +849,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
         null,
         null);
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, null);
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null, null);
 
@@ -866,7 +866,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
 
     HttpResponse<TrustedIssuerVO> response =
         testClient.replaceCredentialsByScope(
-            ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, null);
+            ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     assertEquals(HttpStatus.OK, response.getStatus());
     assertTrue(
@@ -954,7 +954,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
         null,
         null);
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, null);
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     // an administrative update of the directly managed credentials
     HttpResponse<TrustedIssuerVO> response =
@@ -982,7 +982,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Test
   public void deleteIssuerById_removesGrantedCredentialsAsWell() throws Exception {
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, null);
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     assertEquals(
         HttpStatus.NO_CONTENT,
@@ -1022,7 +1022,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     grantEveryPairAndAnUnscopedCredential();
 
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, List.of(credential(READER_CREDENTIAL)), ORDER_SCOPE, scopeType);
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(READER_CREDENTIAL)), scopeType);
 
     assertEquals(
         List.of(READER_CREDENTIAL),
@@ -1104,8 +1104,8 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
         null);
     testClient.replaceCredentialsByScope(
         ISSUER_DID,
-        List.of(credential(OPERATOR_CREDENTIAL)),
         ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL)),
         ScopeTypeVO.DATASPACE_MEMBERSHIP);
 
     HttpResponse<TrustedIssuerVO> response =
@@ -1132,7 +1132,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void replaceCredentialsByScope_withoutTypeIsPersistedUntyped() {
     // the shape of every grant written before scope types existed
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, null);
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     List<Credential> untyped = scopedCredentials(ISSUER_DID, ORDER_SCOPE);
     assertEquals(1, untyped.size(), "The untyped grant should be found by a null type.");
@@ -1234,7 +1234,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Test
   public void getIssuerScopes200_untypedGrantCarriesNoType() {
     testClient.replaceCredentialsByScope(
-        ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, null);
+        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
     String body = httpClient.toBlocking().retrieve(String.format(ISSUER_SCOPES_PATH, ISSUER_DID));
 
@@ -1255,6 +1255,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
         null);
     client.replaceCredentialsByScope(
         ISSUER_DID,
+        OTHER_ORDER_SCOPE,
         List.of(
             new CredentialsVO()
                 .credentialsType(OPERATOR_CREDENTIAL)
@@ -1262,17 +1263,16 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
                     List.of(
                         new ClaimVO().name("roles").allowedValues(List.of("OPERATOR")),
                         new ClaimVO().name("level").allowedValues(List.of("GOLD"))))),
-        OTHER_ORDER_SCOPE,
         null);
     client.replaceCredentialsByScope(
         ISSUER_DID,
-        List.of(credential(OPERATOR_CREDENTIAL)),
         ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL)),
         ScopeTypeVO.DATASPACE_MEMBERSHIP);
     client.replaceCredentialsByScope(
         ISSUER_DID,
-        List.of(credential(OPERATOR_CREDENTIAL), credential(READER_CREDENTIAL)),
         ORDER_SCOPE,
+        List.of(credential(OPERATOR_CREDENTIAL), credential(READER_CREDENTIAL)),
         null);
   }
 
@@ -1289,7 +1289,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     SCOPE_TYPES.forEach(
         scopeType ->
             testClient.replaceCredentialsByScope(
-                ISSUER_DID, List.of(credential(OPERATOR_CREDENTIAL)), ORDER_SCOPE, scopeType));
+                ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), scopeType));
   }
 
   private void assertOtherPairsAndUnscopedSurvive(ScopeTypeVO changedType) {

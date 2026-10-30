@@ -64,6 +64,12 @@ public class TrustedIssuersListController implements IssuerApi {
       "A scope is required - credentials without one cannot be revoked without affecting others.";
   private static final String SCOPE_TYPE_WITHOUT_SCOPE =
       "A scope type requires a scope - unscoped credentials cannot be addressed by type.";
+  private static final String NO_SCOPE_OR_UNSCOPED =
+      "A scope or unscoped=true is required - a forgotten scope must not delete anything.";
+  private static final String UNSCOPED_WITH_SCOPE =
+      "A scope cannot be combined with unscoped=true - it addresses either a grant or none.";
+  private static final String UNSCOPED_WITH_SCOPE_TYPE =
+      "A scope type cannot be combined with unscoped=true - unscoped credentials have no type.";
 
   private static final Comparator<Grant> GRANT_ORDER =
       Comparator.comparing(Grant::scope)
@@ -104,7 +110,7 @@ public class TrustedIssuersListController implements IssuerApi {
       throw new IllegalArgumentException(SCOPE_TYPE_WITHOUT_SCOPE);
     }
     if (scope != null) {
-      requireScope(scope);
+      requireScope(scope, NO_SCOPE_PROVIDED);
     }
 
     Sort didSort = Sort.unsorted().order(SORT_FIELD);
@@ -146,7 +152,7 @@ public class TrustedIssuersListController implements IssuerApi {
       throw new IllegalArgumentException(SCOPE_TYPE_WITHOUT_SCOPE);
     }
     if (scope != null) {
-      requireScope(scope);
+      requireScope(scope, NO_SCOPE_PROVIDED);
     }
     if (trustedIssuerRepository.existsById(trustedIssuerVO.getDid())) {
       throw new ConflictException("Issuer already exists.", trustedIssuerVO.getDid());
@@ -216,7 +222,7 @@ public class TrustedIssuersListController implements IssuerApi {
       List<CredentialsVO> credentialsVO,
       @Nullable ScopeTypeVO scopeType) {
 
-    requireScope(scope);
+    requireScope(scope, NO_SCOPE_PROVIDED);
     String type = toColumn(scopeType);
     String grant = describe(scope, type);
     TrustedIssuer trustedIssuer =
@@ -258,18 +264,26 @@ public class TrustedIssuersListController implements IssuerApi {
    *
    * <p>The issuer itself is kept even when no credential remains, so that an issuer somebody else
    * manages is not removed as a side effect of a revocation. An issuer without credentials is not
-   * trusted for anything, which is the same outcome as before.
+   * trusted for anything, which is the same outcome as before. With {@code unscoped=true} only the
+   * directly managed credentials are deleted instead, so that they can be migrated into grants.
    *
    * @param did the DID of the issuer
    * @param scope what granted the credentials, e.g. a ProductOrder id
    * @param scopeType the kind of thing the scope identifies, {@code null} addresses untyped grants
+   * @param unscoped {@code true} to address the credentials without a scope instead of a grant
    * @return no content, or not found if the issuer does not exist
    */
   @Transactional
   @Override
   public HttpResponse<Object> deleteCredentialsByScope(
-      String did, String scope, @Nullable ScopeTypeVO scopeType) {
-    requireScope(scope);
+      String did,
+      @Nullable String scope,
+      @Nullable ScopeTypeVO scopeType,
+      @Nullable Boolean unscoped) {
+    if (Boolean.TRUE.equals(unscoped)) {
+      return deleteUnscopedCredentials(did, scope, scopeType);
+    }
+    requireScope(scope, NO_SCOPE_OR_UNSCOPED);
     String type = toColumn(scopeType);
     String grant = describe(scope, type);
     if (!trustedIssuerRepository.existsById(did)) {
@@ -278,6 +292,31 @@ public class TrustedIssuersListController implements IssuerApi {
     }
     credentialRepository.deleteByTrustedIssuerDidAndScopeAndScopeType(did, scope, type);
     log.info("Issuer {} revoked credentials of scope {}", did, grant);
+    return HttpResponse.noContent();
+  }
+
+  /**
+   * Delete the credentials managed directly through the issuer endpoints, keeping every grant.
+   *
+   * @param did the DID of the issuer
+   * @param scope must be {@code null}, the marker replaces it
+   * @param scopeType must be {@code null}, unscoped credentials have no type
+   * @return no content, or not found if the issuer does not exist
+   */
+  private HttpResponse<Object> deleteUnscopedCredentials(
+      String did, @Nullable String scope, @Nullable ScopeTypeVO scopeType) {
+    if (scope != null) {
+      throw new IllegalArgumentException(UNSCOPED_WITH_SCOPE);
+    }
+    if (scopeType != null) {
+      throw new IllegalArgumentException(UNSCOPED_WITH_SCOPE_TYPE);
+    }
+    if (!trustedIssuerRepository.existsById(did)) {
+      log.debug("Issuer {} has no unscoped credentials to delete, it does not exist", did);
+      return HttpResponse.notFound();
+    }
+    credentialRepository.deleteByTrustedIssuerDidAndScopeIsNull(did);
+    log.info("Issuer {} deleted its unscoped credentials", did);
     return HttpResponse.noContent();
   }
 
@@ -323,10 +362,11 @@ public class TrustedIssuersListController implements IssuerApi {
    * problem the scope exists to solve.
    *
    * @param scope the scope to check
+   * @param message the reason given to the client when the scope is missing
    */
-  private static void requireScope(String scope) {
+  private static void requireScope(@Nullable String scope, String message) {
     if (scope == null || scope.isBlank()) {
-      throw new IllegalArgumentException(NO_SCOPE_PROVIDED);
+      throw new IllegalArgumentException(message);
     }
   }
 

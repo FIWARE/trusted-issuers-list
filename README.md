@@ -71,7 +71,7 @@ Levels are used as follows:
 
 * `ERROR` - the service itself is broken: an unexpected exception, logged once with its stack trace
 * `WARN` - a request was rejected as invalid (400), as one line with the reason; its stack trace only on `DEBUG`. This includes requests rejected by micronaut itself, e.g. malformed JSON or a missing body
-* `INFO` - every handled request, and every change of the list: an issuer was created, updated or deleted, a scope granted or revoked credentials (for a typed grant the scope reads `<scope> of type <type>`). A rejected duplicate (409) is logged here as one line naming the issuer (`Issuer <did> already exists, ...`), its reason and stack trace on `DEBUG`
+* `INFO` - every handled request, and every change of the list: an issuer was created, updated or deleted, a scope granted or revoked credentials, or the unscoped credentials of an issuer were deleted (for a typed grant the scope reads `<scope> of type <type>`). A rejected duplicate (409) is logged here as one line naming the issuer (`Issuer <did> already exists, ...`), its reason and stack trace on `DEBUG`
 * `DEBUG` - the details: the complete issuer or credentials (including their claims) of every change, and why a lookup or change found nothing (404)
 
 Every line concerning an issuer starts with `Issuer <did>`, e.g.
@@ -106,6 +106,10 @@ datasources:
 2 APIs are provided by the service:
 - [Trusted-Issuers-List API](./api/trusted-issuers-list.yaml) for managing the issuers and there credential-configurations
 - [Trusted-Issuers-Registry API](./api/trusted-issuers-registry.yaml) to provide the information in an [EBSI compatible](https://api-pilot.ebsi.eu/docs/apis/trusted-issuers-registry/latest#/) format.
+
+Credentials granted for a scope (e.g. a ProductOrder) are managed via `PUT` and `DELETE /issuer/{did}/credential?scope=<scope>`.
+To migrate the directly managed credentials of an issuer into such grants, `DELETE /issuer/{did}/credential?unscoped=true` removes only the credentials without a scope and keeps the issuer and all of its grants.
+The marker cannot be combined with `scope` or `scopeType`, and a `DELETE` with neither a scope nor the marker is rejected with `400`.
 
 To have information about an issuer available at the [Trusted-Issuers-Registry API](./api/trusted-issuers-registry.yaml), it first needs to be created.
 An example request would look like:

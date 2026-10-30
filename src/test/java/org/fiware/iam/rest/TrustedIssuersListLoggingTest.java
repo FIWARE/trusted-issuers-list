@@ -29,6 +29,7 @@ import org.fiware.iam.repository.TrustedIssuerRepository;
 import org.fiware.iam.til.api.IssuerApiTestClient;
 import org.fiware.iam.til.model.CredentialsVO;
 import org.fiware.iam.til.model.ScopeTypeVO;
+import org.fiware.iam.til.model.TrustedIssuerVO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,7 @@ class TrustedIssuersListLoggingTest {
   private static final String ISSUER_DID = "did:web:consumer.org";
   private static final String ORDER_SCOPE = "urn:ngsi-ld:product-order:first";
   private static final String TYPED_ORDER_SCOPE = ORDER_SCOPE + " of type dataspace-membership";
+  private static final Boolean UNSCOPED = true;
 
   public final IssuerApiTestClient testClient;
   public final TrustedIssuerRepository repository;
@@ -90,6 +92,24 @@ class TrustedIssuersListLoggingTest {
         List.of("Issuer did:web:consumer.org revoked credentials of scope " + ORDER_SCOPE),
         infoLines(),
         "Replacing the credentials of a scope with none must not read like a grant.");
+  }
+
+  @Test
+  void deletingTheUnscopedCredentialsIsLoggedAsSuch() throws Exception {
+    testClient.createTrustedIssuer(
+        new TrustedIssuerVO()
+            .did(ISSUER_DID)
+            .credentials(List.of(new CredentialsVO().credentialsType("UserCredential"))),
+        null,
+        null);
+    appender.list.clear();
+
+    testClient.deleteCredentialsByScope(ISSUER_DID, null, null, UNSCOPED);
+
+    assertEquals(
+        List.of("Issuer did:web:consumer.org deleted its unscoped credentials"),
+        infoLines(),
+        "Deleting the directly managed credentials must not read like deleting the issuer.");
   }
 
   @Test

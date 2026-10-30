@@ -76,6 +76,9 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   private static final int ORDER_SCOPE_CREDENTIALS = 2;
   private static final int MEMBERSHIP_CREDENTIALS = 1;
   private static final int OTHER_ORDER_CREDENTIALS = 1;
+  private static final Boolean UNSCOPED = true;
+  private static final Boolean NOT_UNSCOPED = false;
+  private static final String BLANK_SCOPE = "";
   // a list rather than the enum's values, because the untyped grant (null) is one of them
   private static final List<ScopeTypeVO> SCOPE_TYPES =
       Arrays.asList(null, ScopeTypeVO.DATASPACE_MEMBERSHIP);
@@ -621,7 +624,8 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     testClient.replaceCredentialsByScope(
         ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
-    HttpResponse<?> response = testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null);
+    HttpResponse<?> response =
+        testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null, null);
 
     assertEquals(HttpStatus.NO_CONTENT, response.getStatus(), "The revocation should succeed.");
     assertTrue(
@@ -635,7 +639,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Override
   public void deleteCredentialsByScope404() throws Exception {
     HttpResponse<?> response =
-        testClient.deleteCredentialsByScope("did:web:nonexistent.org", ORDER_SCOPE, null);
+        testClient.deleteCredentialsByScope("did:web:nonexistent.org", ORDER_SCOPE, null, null);
 
     assertEquals(HttpStatus.NOT_FOUND, response.getStatus(), "There is nothing to revoke.");
   }
@@ -644,7 +648,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   @Override
   public void deleteCredentialsByScope400() throws Exception {
     try {
-      testClient.deleteCredentialsByScope(ISSUER_DID, "", null);
+      testClient.deleteCredentialsByScope(ISSUER_DID, "", null, null);
     } catch (HttpClientResponseException e) {
       assertEquals(
           HttpStatus.BAD_REQUEST,
@@ -653,6 +657,112 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
       return;
     }
     fail("A revocation without a scope should be rejected.");
+  }
+
+  @Test
+  public void deleteCredentialsByScope204_unscoped() {
+    grantSeveralPairsAndAnUnscopedCredential(testClient);
+    List<IssuerScopeVO> grants = testClient.getIssuerScopes(ISSUER_DID).body();
+
+    HttpResponse<?> response =
+        testClient.deleteCredentialsByScope(ISSUER_DID, null, null, UNSCOPED);
+
+    assertEquals(HttpStatus.NO_CONTENT, response.getStatus(), "The deletion should succeed.");
+    assertEquals(
+        HttpStatus.OK,
+        testClient.getIssuer(ISSUER_DID).getStatus(),
+        "The issuer itself should survive the deletion of its unscoped credentials.");
+    assertOnlyScopedCredentialsRemain();
+    assertEquals(
+        grants,
+        testClient.getIssuerScopes(ISSUER_DID).body(),
+        "Every grant should be kept with all of its credentials.");
+  }
+
+  @ParameterizedTest
+  @MethodSource("unscopedDeletionSetups")
+  public void deleteCredentialsByScope204_unscopedIsIdempotent(
+      Consumer<IssuerApiTestClient> setup) {
+    setup.accept(testClient);
+    List<IssuerScopeVO> grants = testClient.getIssuerScopes(ISSUER_DID).body();
+
+    HttpResponse<?> first = testClient.deleteCredentialsByScope(ISSUER_DID, null, null, UNSCOPED);
+    HttpResponse<?> second = testClient.deleteCredentialsByScope(ISSUER_DID, null, null, UNSCOPED);
+
+    assertEquals(HttpStatus.NO_CONTENT, first.getStatus(), "The first deletion should succeed.");
+    assertEquals(
+        HttpStatus.NO_CONTENT,
+        second.getStatus(),
+        "Repeating the deletion should succeed as well.");
+    assertOnlyScopedCredentialsRemain();
+    assertEquals(
+        grants,
+        testClient.getIssuerScopes(ISSUER_DID).body(),
+        "Repeating the deletion must not touch any grant.");
+  }
+
+  private static Stream<Arguments> unscopedDeletionSetups() {
+    return Stream.of(
+        Arguments.of(
+            (Consumer<IssuerApiTestClient>)
+                TrustedIssuersListControllerTest::grantSeveralPairsAndAnUnscopedCredential),
+        Arguments.of(
+            (Consumer<IssuerApiTestClient>)
+                client ->
+                    client.replaceCredentialsByScope(
+                        ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null)),
+        Arguments.of(
+            (Consumer<IssuerApiTestClient>)
+                client ->
+                    client.createTrustedIssuer(
+                        new TrustedIssuerVO()
+                            .did(ISSUER_DID)
+                            .credentials(List.of(credential(USER_CREDENTIAL))),
+                        null,
+                        null)));
+  }
+
+  @Test
+  public void deleteCredentialsByScope404_unscoped() {
+    HttpResponse<?> response =
+        testClient.deleteCredentialsByScope("did:web:nonexistent.org", null, null, UNSCOPED);
+
+    assertEquals(HttpStatus.NOT_FOUND, response.getStatus(), "There is nothing to delete.");
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidUnscopedMarkers")
+  public void deleteCredentialsByScope400_invalidMarker(
+      String scope, ScopeTypeVO scopeType, Boolean unscoped) {
+    grantSeveralPairsAndAnUnscopedCredential(testClient);
+    TrustedIssuerVO before = testClient.getIssuer(ISSUER_DID).body();
+
+    HttpClientResponseException e =
+        assertThrows(
+            HttpClientResponseException.class,
+            () -> testClient.deleteCredentialsByScope(ISSUER_DID, scope, scopeType, unscoped));
+
+    assertEquals(
+        HttpStatus.BAD_REQUEST,
+        e.getStatus(),
+        "A deletion that addresses neither exactly one grant nor the unscoped credentials should"
+            + " be rejected.");
+    assertEquals(
+        before,
+        testClient.getIssuer(ISSUER_DID).body(),
+        "A rejected deletion must not delete anything.");
+  }
+
+  private static Stream<Arguments> invalidUnscopedMarkers() {
+    return Stream.of(
+        // a forgotten scope must stay an error rather than delete the unscoped credentials
+        Arguments.of(null, null, null),
+        Arguments.of(null, null, NOT_UNSCOPED),
+        Arguments.of(BLANK_SCOPE, null, NOT_UNSCOPED),
+        Arguments.of(ORDER_SCOPE, null, UNSCOPED),
+        Arguments.of(ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP, UNSCOPED),
+        Arguments.of(null, ScopeTypeVO.DATASPACE_MEMBERSHIP, UNSCOPED),
+        Arguments.of(null, ScopeTypeVO.DATASPACE_MEMBERSHIP, null));
   }
 
   @Test
@@ -699,7 +809,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     testClient.replaceCredentialsByScope(
         ISSUER_DID, OTHER_ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
-    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null);
+    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null, null);
 
     TrustedIssuerVO issuer = testClient.getIssuer(ISSUER_DID).body();
     assertEquals(
@@ -722,7 +832,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
     testClient.replaceCredentialsByScope(
         ISSUER_DID, ORDER_SCOPE, List.of(credential(OPERATOR_CREDENTIAL)), null);
 
-    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null);
+    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null, null);
 
     TrustedIssuerVO issuer = testClient.getIssuer(ISSUER_DID).body();
     assertEquals(
@@ -770,7 +880,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
         ORDER_SCOPE,
         null);
 
-    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null);
+    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null, null);
 
     TrustedIssuerVO issuer = testClient.getIssuer(ISSUER_DID).body();
     assertTrue(
@@ -907,7 +1017,7 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
   public void deleteCredentialsByScope_deletesOnlyItsOwnPair(ScopeTypeVO scopeType) {
     grantEveryPairAndAnUnscopedCredential();
 
-    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, scopeType);
+    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, scopeType, null);
 
     assertTrue(
         scopedCredentials(ISSUER_DID, ORDER_SCOPE, column(scopeType)).isEmpty(),
@@ -929,14 +1039,14 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
               assertTrue(
                   scopedCredentials(ISSUER_DID, ORDER_SCOPE, column(otherType)).isEmpty(),
                   "The credentials must not be attributed to another type: " + otherType);
-              testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, otherType);
+              testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, otherType, null);
             });
     assertEquals(
         1,
         scopedCredentials(ISSUER_DID, ORDER_SCOPE, column(scopeType)).size(),
         "The credentials should belong to the exact pair and survive revoking any other type.");
 
-    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, scopeType);
+    testClient.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, scopeType, null);
 
     assertTrue(
         scopedCredentials(ISSUER_DID, ORDER_SCOPE, column(scopeType)).isEmpty(),
@@ -1059,16 +1169,23 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
                 client -> {
                   grantSeveralPairsAndAnUnscopedCredential(client);
                   client.deleteCredentialsByScope(
-                      ISSUER_DID, ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP);
+                      ISSUER_DID, ORDER_SCOPE, ScopeTypeVO.DATASPACE_MEMBERSHIP, null);
                 },
             List.of(untypedOrder, otherOrder)),
         Arguments.of(
             (Consumer<IssuerApiTestClient>)
                 client -> {
                   grantSeveralPairsAndAnUnscopedCredential(client);
-                  client.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null);
+                  client.deleteCredentialsByScope(ISSUER_DID, ORDER_SCOPE, null, null);
                 },
             List.of(membership, otherOrder)),
+        Arguments.of(
+            (Consumer<IssuerApiTestClient>)
+                client -> {
+                  grantSeveralPairsAndAnUnscopedCredential(client);
+                  client.deleteCredentialsByScope(ISSUER_DID, null, null, UNSCOPED);
+                },
+            List.of(untypedOrder, membership, otherOrder)),
         Arguments.of(
             (Consumer<IssuerApiTestClient>)
                 client ->
@@ -1181,6 +1298,13 @@ public class TrustedIssuersListControllerTest implements IssuerApiTestSpec {
 
   private static List<String> credentialTypes(List<Credential> credentials) {
     return credentials.stream().map(Credential::getCredentialsType).toList();
+  }
+
+  private void assertOnlyScopedCredentialsRemain() {
+    assertEquals(
+        credentialRepository.findByTrustedIssuerDidAndScopeIsNotNull(ISSUER_DID).size(),
+        testClient.getIssuer(ISSUER_DID).body().getCredentials().size(),
+        "Only the scoped credentials should remain.");
   }
 
   private List<Credential> scopedCredentials(String did, String scope) {

@@ -68,6 +68,14 @@ public interface CredentialRepository extends PageableRepository<Credential, Int
   List<Credential> findByTrustedIssuerDidAndScopeIsNotNull(String did);
 
   /**
+   * Delete the credentials managed directly through the issuer endpoints, leaving every grant
+   * alone, so that they can be migrated into grants.
+   *
+   * @param did the DID of the issuer
+   */
+  void deleteByTrustedIssuerDidAndScopeIsNull(String did);
+
+  /**
    * Typed half of {@link #findByTrustedIssuerDidAndScopeAndScopeType}, use that instead.
    *
    * @param did the DID of the issuer
